@@ -203,30 +203,36 @@
         const isMobile = () => window.matchMedia("(max-width: 768px)").matches;
     // BOT_PARTICIPANTS: excluded from person dropdown (must match charts_payloads.py)
     const BOT_PARTICIPANTS = new Set(["meta ai"]);
+
+    // On mobile: staticPlot freezes the chart as a pure SVG — no event listeners,
+    // no ResizeObserver, no autosize relayout loop. Visually identical to interactive.
+    // On desktop: full interactivity.
+    const mobile = isMobile();
     const plotConfig = {
-        responsive: true,
+        responsive: !mobile,          // desktop only; mobile uses staticPlot instead
+        staticPlot: mobile,           // frozen SVG on mobile — zero resize events
         displaylogo: false,
+        displayModeBar: !mobile,      // mode bar useless on a static chart
         modeBarButtonsToRemove: ["select2d", "lasso2d", "autoScale2d", "zoom2d", "pan2d"],
         scrollZoom: false,
-        // Prevent touch events from resizing the chart on mobile
         doubleClick: false
     };
-    // Explicit height prevents Plotly's autosize from growing charts unboundedly on mobile
-    // when touch events trigger a relayout cycle.
-    const CHART_HEIGHT = isMobile() ? 360 : 420;
-    const HEATMAP_HEIGHT = isMobile() ? 340 : 420;
+
+    // Desktop uses 420px; mobile charts are sized by CSS (height: 360px on .chart-box).
+    // Do NOT set autosize: true alongside an explicit height — they fight each other.
+    const CHART_HEIGHT = mobile ? undefined : 420;
+    const HEATMAP_HEIGHT = mobile ? undefined : 420;
     const baseLayout = (title, extra = {}) => ({
         title,
         dragmode: false,
-        height: CHART_HEIGHT,
-        autosize: true,
-        margin: { t: 52, l: 46, r: 16, b: isMobile() ? 80 : 52 },
+        ...(CHART_HEIGHT !== undefined ? { height: CHART_HEIGHT } : {}),
+        margin: { t: 52, l: 46, r: 16, b: mobile ? 80 : 52 },
         legend: {
-            orientation: isMobile() ? "h" : "v",
-            y: isMobile() ? -0.35 : 1,
-            x: isMobile() ? 0 : 1
+            orientation: mobile ? "h" : "v",
+            y: mobile ? -0.35 : 1,
+            x: mobile ? 0 : 1
         },
-        hovermode: "closest",
+        hovermode: mobile ? false : "closest",
         xaxis: { fixedrange: true, ...extra.xaxis },
         yaxis: { fixedrange: true, ...extra.yaxis },
         ...extra,
@@ -499,7 +505,7 @@
                 nacolor: "lightgray",
                 xgap: 1, ygap: 1,
                 hovertemplate: "From %{y}<br>To %{x}<br>%{z:.2f} min<extra></extra>"
-            }], { ...baseLayout(selected === "all" ? "Average Response Time (minutes)" : `Response Times for ${selected}`, { xaxis: { title: "Replied to (Sender)" }, yaxis: { title: "Replier (Responder)" } }), height: HEATMAP_HEIGHT, margin: { l: 200, t: 52, r: 16, b: isMobile() ? 80 : 52 } }, plotConfig);
+            }], { ...baseLayout(selected === "all" ? "Average Response Time (minutes)" : `Response Times for ${selected}`, { xaxis: { title: "Replied to (Sender)" }, yaxis: { title: "Replier (Responder)" } }), ...(HEATMAP_HEIGHT !== undefined ? { height: HEATMAP_HEIGHT } : {}), margin: { l: 200, t: 52, r: 16, b: mobile ? 80 : 52 } }, plotConfig);
             addDownloadButton("responseHeatmap", "kaajd-response-heatmap");
         } catch {
             setChartError("responseHeatmap", "Could not render response heatmap.");
@@ -640,13 +646,13 @@
         const affinity = filterSquareHeatmap(p.affinity_heatmap, selected);
         const correlation = filterSquareHeatmap(p.correlation_heatmap, selected);
         try {
-            Plotly.newPlot("affinityHeatmap", [{ x: affinity.x, y: affinity.y, z: affinity.z, type: "heatmap", colorscale: [[0, "white"], [1, "rgb(8,48,107)"]], hovertemplate: "%{y} → %{x}<br>Affinity %{z:.4f}<extra></extra>" }], { ...baseLayout(selected === "all" ? "Affinity Scores" : `Affinity Around ${selected}`, { xaxis: { title: "Replied to →" }, yaxis: { title: "Replier ↓" } }), height: HEATMAP_HEIGHT, margin: { l: 200, t: 52, r: 16, b: isMobile() ? 80 : 52 } }, plotConfig);
+            Plotly.newPlot("affinityHeatmap", [{ x: affinity.x, y: affinity.y, z: affinity.z, type: "heatmap", colorscale: [[0, "white"], [1, "rgb(8,48,107)"]], hovertemplate: "%{y} → %{x}<br>Affinity %{z:.4f}<extra></extra>" }], { ...baseLayout(selected === "all" ? "Affinity Scores" : `Affinity Around ${selected}`, { xaxis: { title: "Replied to →" }, yaxis: { title: "Replier ↓" } }), ...(HEATMAP_HEIGHT !== undefined ? { height: HEATMAP_HEIGHT } : {}), margin: { l: 200, t: 52, r: 16, b: mobile ? 80 : 52 } }, plotConfig);
             addDownloadButton("affinityHeatmap", "kaajd-affinity-heatmap");
         } catch {
             setChartError("affinityHeatmap", "Could not render affinity heatmap.");
         }
         try {
-            Plotly.newPlot("correlationHeatmap", [{ x: correlation.x, y: correlation.y, z: correlation.z, type: "heatmap", colorscale: "RdBu", zmid: 0, hovertemplate: "%{y} vs %{x}<br>r=%{z:.3f}<extra></extra>" }], { ...baseLayout(selected === "all" ? "Daily Activity Correlation" : `Correlation Around ${selected}`, { xaxis: { title: "Participant" }, yaxis: { title: "Participant" } }), height: HEATMAP_HEIGHT, margin: { l: 200, t: 52, r: 16, b: isMobile() ? 80 : 52 } }, plotConfig);
+            Plotly.newPlot("correlationHeatmap", [{ x: correlation.x, y: correlation.y, z: correlation.z, type: "heatmap", colorscale: "RdBu", zmid: 0, hovertemplate: "%{y} vs %{x}<br>r=%{z:.3f}<extra></extra>" }], { ...baseLayout(selected === "all" ? "Daily Activity Correlation" : `Correlation Around ${selected}`, { xaxis: { title: "Participant" }, yaxis: { title: "Participant" } }), ...(HEATMAP_HEIGHT !== undefined ? { height: HEATMAP_HEIGHT } : {}), margin: { l: 200, t: 52, r: 16, b: mobile ? 80 : 52 } }, plotConfig);
             addDownloadButton("correlationHeatmap", "kaajd-correlation-heatmap");
         } catch {
             setChartError("correlationHeatmap", "Could not render activity correlation heatmap.");

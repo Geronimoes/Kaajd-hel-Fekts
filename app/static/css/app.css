@@ -92,7 +92,16 @@ table {
         width: 100%;
     }
 
+    /* Fixed height (not min-height) so Plotly's ResizeObserver always
+       finds the same container size and never triggers a growth loop. */
     .chart-box {
-        min-height: 280px;
+        height: 360px;
+        overflow: hidden;
+    }
+
+    /* Download buttons are awkward on mobile; hide them.
+       Users can use the Static Graphs tab or long-press to save. */
+    .chart-download-btn {
+        display: none;
     }
 }

@@ -13,14 +13,17 @@ All notable changes to this project are documented in this file.
 
 ### Changed (2026-04-06 session)
 - Updated `GRAPH_FILENAMES` in `routes.py` to match all 13 generated static PNGs (was 7).
-- Updated Plotly chart layouts in `dashboard.html` to use explicit `height` values (420px desktop, 360px mobile) and `fixedrange: true` on both axes. Prevents "vertical stretch on tap" mobile bug.
+- Updated Plotly mobile rendering strategy: `staticPlot: true` + `responsive: false` on mobile devices. Charts render as frozen SVGs (visually identical, no interactivity). This definitively eliminates the vertical-stretch-on-tap bug caused by Plotly's ResizeObserver firing on viewport-height changes when the browser chrome hides/shows. Desktop retains full interactivity.
+- Updated mobile CSS: `.chart-box` uses fixed `height: 360px` (not `min-height`) on mobile, giving Plotly a stable container with no growth potential. Download buttons hidden on mobile via CSS.
 - Updated affinity/correlation heatmaps: left margin explicitly 200px; `nacolor: "lightgray"` added to response heatmap so null cells don't appear as a valid colour.
 - Updated `scripts/dev-check.sh` API validation to write responses to temp files instead of env vars, fixing "Argument list too long" crash for large chats.
 - Updated `requirements.txt` with a comment explaining why kaleido is pinned to 0.2.1.
+- Removed `autosize: true` from Plotly base layout (was fighting the explicit `height` setting on desktop).
 
 ### Fixed (2026-04-06 session)
 - Fixed Meta AI appearing in the person-filter dropdown on the dashboard.
 - Fixed dev-check.sh step 4 crashing on large chats (env-var size limit exceeded).
+- Fixed Plotly charts growing unboundedly on mobile when tapping chart elements.
 
 ---
 
