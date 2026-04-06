@@ -1,0 +1,16 @@
+[deprecated] wa-flask.py is kept for compatibility. Preferred production entrypoint is gunicorn wsgi:app.
+ * Tip: There are .env files present. Install python-dotenv to use them.
+ * Serving Flask app 'app'
+ * Debug mode: off
+[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://46.225.73.55:5000
+[33mPress CTRL+C to quit[0m
+127.0.0.1 - - [06/Apr/2026 20:31:24] "GET /api/chat/1/context HTTP/1.1" 200 -
+127.0.0.1 - - [06/Apr/2026 20:31:31] "[32mGET /results/chat HTTP/1.1[0m" 302 -
+127.0.0.1 - - [06/Apr/2026 20:31:36] "[32mGET /results/chat HTTP/1.1[0m" 302 -
+127.0.0.1 - - [06/Apr/2026 20:31:42] "[32mGET /results/chat HTTP/1.1[0m" 302 -
+127.0.0.1 - - [06/Apr/2026 20:31:50] "[32mGET /demo HTTP/1.1[0m" 302 -
+127.0.0.1 - - [06/Apr/2026 20:31:51] "GET /results/sample-chat?chat_id=2&parser_format=dutch_dd-mm-yyyy&detected_language=nl&message_count=112 HTTP/1.1" 200 -
+127.0.0.1 - - [06/Apr/2026 20:32:13] "GET /results/sample-chat/export HTTP/1.1" 200 -

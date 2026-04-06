@@ -137,6 +137,12 @@ def _top_domains(df: pd.DataFrame, top_n: int = 20) -> list[dict[str, Any]]:
 
 
 def _extract_domains(message: str) -> list[str]:
+    DOMAIN_ALIASES = {
+        "youtu.be": "youtube.com",
+        "m.youtube.com": "youtube.com",
+        "mobile.twitter.com": "twitter.com",
+        "m.facebook.com": "facebook.com",
+    }
     tokens = message.replace("\n", " ").split()
     domains: list[str] = []
     for token in tokens:
@@ -151,5 +157,6 @@ def _extract_domains(message: str) -> list[str]:
         if host.startswith("www."):
             host = host[4:]
         if host:
+            host = DOMAIN_ALIASES.get(host, host)
             domains.append(host)
     return domains

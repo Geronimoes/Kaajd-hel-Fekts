@@ -2,13 +2,19 @@ from datetime import timedelta
 from pathlib import Path
 import re
 
-import emoji
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import statsmodels.api as sm
-from textblob import TextBlob
 from wordcloud import WordCloud
+import plotly.graph_objects as go
+
+from .analyzers import (
+    analyze_response_patterns,
+    analyze_media_links,
+    analyze_topics,
+    analyze_relationships,
+)
+from .charts_payloads import build_plotly_payloads
 
 
 def generate_graphs(raw_data_df: pd.DataFrame, output_dir: str | Path) -> list[str]:
@@ -30,98 +36,158 @@ def generate_graphs(raw_data_df: pd.DataFrame, output_dir: str | Path) -> list[s
 
     generated_files = []
 
-    generated_files.append(_plot_messages_over_time(df, output_path))
-    generated_files.append(_plot_most_active_times(df, output_path))
-    generated_files.append(_plot_conversation_starters(df, output_path))
-    generated_files.append(_plot_message_length_distribution(df, output_path))
     generated_files.append(_plot_wordcloud(df, output_path))
-    generated_files.append(_plot_top_emojis(df, output_path))
-    generated_files.append(_plot_sentiment(df, output_path))
+
+    # Plotly static graphs
+    try:
+        response_patterns = analyze_response_patterns(raw_data_df)
+        media_links = analyze_media_links(raw_data_df)
+        topics = analyze_topics(raw_data_df)
+        relationships = analyze_relationships(raw_data_df)
+        payloads = build_plotly_payloads(
+            raw_data_df=raw_data_df,
+            response_patterns=response_patterns,
+            media_links=media_links,
+            topics=topics,
+            relationships=relationships,
+        )
+
+        static_files = _generate_plotly_static_graphs(payloads, output_path)
+        generated_files.extend(static_files)
+    except Exception as e:
+        print(f"Warning: Failed to generate static Plotly graphs: {e}")
 
     return generated_files
 
 
-def _plot_messages_over_time(df: pd.DataFrame, output_dir: Path) -> str:
-    date_counts = df["Date"].value_counts().sort_index().reset_index()
-    date_counts.columns = ["Date", "Count"]
-    date_counts["Days"] = (date_counts["Date"] - date_counts["Date"][0]).dt.days
+def _generate_plotly_static_graphs(payloads: dict, output_dir: Path) -> list[str]:
+    generated = []
+    act = payloads.get("activity", {})
+    res = payloads.get("response_patterns", {})
+    med = payloads.get("media_links", {})
 
-    plt.figure(figsize=(10, 6))
-    plt.scatter(date_counts["Date"], date_counts["Count"], s=5, color="blue")
-    lowess = sm.nonparametric.lowess(
-        date_counts["Count"], date_counts["Days"], frac=0.1
-    )
-    plt.plot(date_counts["Date"], lowess[:, 1], color="red")
-    plt.title("Message Frequency Over Time")
-    plt.xlabel("Date")
-    plt.ylabel("Number of Messages")
-    plt.grid(True)
-    plt.xticks(rotation=45)
-    plt.tight_layout()
+    layout_opts = dict(width=1000, height=600, margin=dict(t=52, l=46, r=16, b=52))
 
-    filename = "messages_over_time.png"
-    plt.savefig(output_dir / filename)
-    plt.close()
-    return filename
+    # Activity: Monthly Volume
+    if act.get("monthly_volume", {}).get("x"):
+        fig = go.Figure(
+            data=[
+                go.Bar(
+                    x=act["monthly_volume"]["x"],
+                    y=act["monthly_volume"]["y"],
+                    marker_color="#2e6f95",
+                )
+            ]
+        )
+        fig.update_layout(title="Message Volume Over Time", **layout_opts)
+        f = "kaajd-monthly-volume.png"
+        fig.write_image(str(output_dir / f))
+        generated.append(f)
 
+    # Activity: Day x Hour
+    if act.get("day_hour_heatmap", {}).get("z"):
+        fig = go.Figure(
+            data=[
+                go.Heatmap(
+                    x=act["day_hour_heatmap"]["x"],
+                    y=act["day_hour_heatmap"]["y"],
+                    z=act["day_hour_heatmap"]["z"],
+                    colorscale="YlGnBu",
+                )
+            ]
+        )
+        fig.update_layout(
+            title="Day x Hour Activity Heatmap",
+            xaxis_title="Hour of day",
+            yaxis_title="Day of week",
+            **layout_opts,
+        )
+        f = "kaajd-day-hour-activity.png"
+        fig.write_image(str(output_dir / f))
+        generated.append(f)
 
-def _plot_most_active_times(df: pd.DataFrame, output_dir: Path) -> str:
-    activity_df = df.copy()
-    activity_df["Hour"] = activity_df["Time"].apply(lambda value: value.hour)
-    activity_df["Quarter"] = activity_df["Date"].dt.quarter
+    # Activity: Message Length Distribution
+    if act.get("message_length"):
+        traces = [
+            go.Box(name=t["name"], y=t["y"], boxmean="sd", boxpoints=False)
+            for t in act["message_length"]
+        ]
+        fig = go.Figure(data=traces)
+        fig.update_layout(
+            title="Message Length Distribution (characters)",
+            yaxis_title="Characters",
+            **layout_opts,
+        )
+        f = "kaajd-message-length-distribution.png"
+        fig.write_image(str(output_dir / f))
+        generated.append(f)
 
-    activity_df.groupby(["Hour", "Quarter"]).size().unstack().plot(kind="line")
-    plt.title("Most Active Times")
-    plt.xlabel("Hour of the Day")
-    plt.ylabel("Number of Messages")
+    # Activity: Top Emojis
+    if act.get("emojis_overall", {}).get("x"):
+        fig = go.Figure(
+            data=[
+                go.Bar(
+                    x=list(reversed(act["emojis_overall"]["y"])),
+                    y=list(reversed(act["emojis_overall"]["x"])),
+                    orientation="h",
+                    marker_color="#eeb422",
+                )
+            ]
+        )
+        fig.update_layout(
+            title="Top 10 Emojis Overall",
+            xaxis_title="Frequency",
+            yaxis_title="Emoji",
+            **layout_opts,
+        )
+        f = "kaajd-top-emojis.png"
+        fig.write_image(str(output_dir / f))
+        generated.append(f)
 
-    filename = "most_active_times.png"
-    plt.savefig(output_dir / filename)
-    plt.close()
-    return filename
+    # Response: Heatmap
+    if res.get("response_time_heatmap", {}).get("z"):
+        fig = go.Figure(
+            data=[
+                go.Heatmap(
+                    x=res["response_time_heatmap"]["x"],
+                    y=res["response_time_heatmap"]["y"],
+                    z=res["response_time_heatmap"]["z"],
+                    colorscale="Viridis",
+                    zmin=0,
+                    xgap=1,
+                    ygap=1,
+                )
+            ]
+        )
+        fig.update_layout(
+            title="Average Response Time (minutes)",
+            xaxis_title="Replied to (Sender)",
+            yaxis_title="Replier (Responder)",
+            margin=dict(l=200, t=52, r=16, b=52),
+            width=1000,
+            height=600,
+        )
+        f = "kaajd-response-heatmap.png"
+        fig.write_image(str(output_dir / f))
+        generated.append(f)
 
+    # Media: Monthly trends
+    if med.get("monthly_traces"):
+        traces = [
+            go.Scatter(
+                name=t["name"], x=t["x"], y=t["y"], mode="lines", stackgroup="one"
+            )
+            for t in med["monthly_traces"]
+        ]
+        fig = go.Figure(data=traces)
+        fig.update_layout(
+            title="Monthly Media/Link Trends (Group Total)", **layout_opts
+        )
+        f = "kaajd-media-monthly-trends.png"
+        fig.write_image(str(output_dir / f))
+        generated.append(f)
 
-def _plot_conversation_starters(df: pd.DataFrame, output_dir: Path) -> str:
-    starters_df = df.copy()
-    starters_df["Datetime"] = pd.to_datetime(
-        starters_df["Date"].astype(str) + " " + starters_df["Time"].astype(str)
-    )
-    starters_df["Time_Diff"] = starters_df["Datetime"].diff()
-    starters_df["Conversation_Starter"] = starters_df["Time_Diff"] > timedelta(hours=1)
-    conversation_starters = starters_df[starters_df["Conversation_Starter"]][
-        "Person"
-    ].value_counts()
-
-    conversation_starters.plot(kind="bar")
-    plt.title("Conversation Starters")
-    plt.xlabel("Person")
-    plt.ylabel("Number of Conversations Started")
-    plt.xticks(rotation=45, ha="right")
-    plt.tight_layout()
-
-    filename = "conversation_starters.png"
-    plt.savefig(output_dir / filename)
-    plt.close()
-    return filename
-
-
-def _plot_message_length_distribution(df: pd.DataFrame, output_dir: Path) -> str:
-    message_length_df = df.copy()
-    message_length_df["Message_Length"] = message_length_df["Message"].apply(len)
-    cutoff_length = np.percentile(message_length_df["Message_Length"], 95)
-
-    plt.figure(figsize=(10, 6))
-    message_length_df["Message_Length"].plot(
-        kind="hist", bins=30, range=(0, cutoff_length)
-    )
-    plt.title("Message Length Distribution")
-    plt.xlabel("Message Length")
-    plt.ylabel("Frequency")
-
-    filename = "message_length_distribution.png"
-    plt.savefig(output_dir / filename)
-    plt.close()
-    return filename
+    return generated
 
 
 def _plot_wordcloud(df: pd.DataFrame, output_dir: Path) -> str:
@@ -166,6 +232,33 @@ def _plot_wordcloud(df: pd.DataFrame, output_dir: Path) -> str:
         "com",
         "youtube",
         "goed",
+        "echt",
+        "net",
+        "gewoon",
+        "misschien",
+        "jullie",
+        "ook",
+        "nog",
+        "dit",
+        "die",
+        "dat",
+        "een",
+        "wat",
+        "hoe",
+        "als",
+        "dan",
+        "maar",
+        "meer",
+        "had",
+        "heeft",
+        "heb",
+        "hem",
+        "zijn",
+        "deze",
+        "kunnen",
+        "moeten",
+        "weten",
+        "zeker",
     }
     custom_stops.update(dutch_stops)
 
@@ -176,85 +269,5 @@ def _plot_wordcloud(df: pd.DataFrame, output_dir: Path) -> str:
 
     filename = "wordcloud.png"
     plt.savefig(output_dir / filename)
-    plt.close()
-    return filename
-
-
-def _extract_emojis(value: str) -> list[str]:
-    emoji_pattern = re.compile(
-        "["
-        "\U0001f600-\U0001f64f"
-        "\U0001f300-\U0001f5ff"
-        "\U0001f680-\U0001f6ff"
-        "\U0001f700-\U0001f77f"
-        "\U0001f780-\U0001f7ff"
-        "\U0001f800-\U0001f8ff"
-        "\U0001f900-\U0001f9ff"
-        "\U0001fa00-\U0001fa6f"
-        "\U0001fa70-\U0001faff"
-        "\U00002702-\U000027b0"
-        "\U000024c2-\U0001f251"
-        "]+",
-        flags=re.UNICODE,
-    )
-    return emoji_pattern.findall(value)
-
-
-def _plot_top_emojis(df: pd.DataFrame, output_dir: Path) -> str:
-    emoji_df = df.copy()
-    emoji_df["Emojis"] = emoji_df["Message"].apply(_extract_emojis)
-    all_emojis = sum(emoji_df["Emojis"], [])
-
-    if all_emojis:
-        emoji_counts = pd.Series(all_emojis).value_counts().head(10)
-        emoji_counts.index = [
-            emoji.demojize(char).replace(":", "").replace("_", " ")
-            for char in emoji_counts.index
-        ]
-        emoji_counts.plot(kind="bar", figsize=(10, 6))
-    else:
-        plt.figure(figsize=(10, 6))
-        plt.text(0.5, 0.5, "No emoji found", ha="center", va="center")
-        plt.xlim(0, 1)
-        plt.ylim(0, 1)
-
-    plt.title("Top 10 Emojis")
-    plt.ylabel("Frequency")
-    plt.xticks(rotation=45, ha="right")
-
-    filename = "top_emojis.png"
-    plt.savefig(output_dir / filename, bbox_inches="tight")
-    plt.close()
-    return filename
-
-
-def _plot_sentiment(df: pd.DataFrame, output_dir: Path) -> str:
-    sentiment_df = df.copy()
-    sentiment_df["Polarity"] = sentiment_df["Message"].apply(
-        lambda message: TextBlob(message).sentiment.polarity
-    )
-    sentiment_df["Polarity_Rolling"] = (
-        sentiment_df["Polarity"].rolling(window=500, center=True).mean()
-    )
-
-    fig, ax = plt.subplots(figsize=(14, 7))
-    ax.plot(sentiment_df.index, sentiment_df["Polarity"], label="Polarity", alpha=0.5)
-    ax.plot(
-        sentiment_df.index,
-        sentiment_df["Polarity_Rolling"],
-        label="Trend",
-        color="red",
-        linewidth=2,
-    )
-    ax.set_title("Sentiment Over Time")
-    ax.set_xlabel("Message index")
-    ax.set_ylabel("Sentiment Polarity")
-    ax.legend()
-    ax.grid(True)
-    ax.annotate("Positive", xy=(0.1, 0.9), xycoords="axes fraction", color="green")
-    ax.annotate("Negative", xy=(0.1, 0.1), xycoords="axes fraction", color="red")
-
-    filename = "sentiment.png"
-    plt.savefig(output_dir / filename, bbox_inches="tight")
     plt.close()
     return filename

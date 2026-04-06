@@ -1,5 +1,7 @@
 import datetime
 from pathlib import Path
+import tempfile
+import shutil
 
 from bs4 import BeautifulSoup
 import pandas as pd
@@ -11,6 +13,7 @@ from flask import (
     render_template,
     request,
     url_for,
+    send_file,
 )
 from werkzeug.utils import secure_filename
 
@@ -36,12 +39,12 @@ from .graphs import generate_graphs
 main_bp = Blueprint("main", __name__)
 
 GRAPH_FILENAMES = [
-    "conversation_starters.png",
-    "message_length_distribution.png",
-    "messages_over_time.png",
-    "most_active_times.png",
-    "sentiment.png",
-    "top_emojis.png",
+    "kaajd-monthly-volume.png",
+    "kaajd-day-hour-activity.png",
+    "kaajd-message-length-distribution.png",
+    "kaajd-top-emojis.png",
+    "kaajd-response-heatmap.png",
+    "kaajd-media-monthly-trends.png",
     "wordcloud.png",
 ]
 
@@ -133,6 +136,30 @@ def demo_analysis():
             detected_language=analysis_result.get("detected_language", "unknown"),
             message_count=int(len(analysis_result["raw_data_df"])),
         )
+    )
+
+
+@main_bp.route("/results/<analysis_id>/export")
+@auth.login_required
+def export_results(analysis_id: str):
+    output_dir = Path(current_app.config["UPLOAD_DIR"]) / analysis_id / "output"
+    if not output_dir.exists() or not output_dir.is_dir():
+        return jsonify({"error": "Results not found."}), 404
+
+    # Create a temporary file to hold the zip archive
+    temp_dir = Path(tempfile.gettempdir())
+    zip_filename = f"kaajd-report-{analysis_id}.zip"
+    zip_path = temp_dir / zip_filename
+
+    # shutil.make_archive adds the .zip extension automatically
+    base_name = str(temp_dir / f"kaajd-report-{analysis_id}")
+    shutil.make_archive(base_name, "zip", root_dir=str(output_dir))
+
+    return send_file(
+        f"{base_name}.zip",
+        as_attachment=True,
+        download_name=zip_filename,
+        mimetype="application/zip",
     )
 
 

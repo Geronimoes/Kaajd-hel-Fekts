@@ -115,6 +115,10 @@ def parse_chat(file_path: str | Path, output_dir: str | Path | None = None) -> d
         ],
     )
 
+    # Exclude bots/AI globally
+    if not raw_data_df.empty:
+        raw_data_df = raw_data_df[~raw_data_df["Person"].str.lower().isin({"meta ai"})]
+
     detected_language = _detect_language(raw_data_df)
     raw_data_csv_path = resolved_output_dir / "raw-data.csv"
     raw_data_df.to_csv(raw_data_csv_path, index=False)

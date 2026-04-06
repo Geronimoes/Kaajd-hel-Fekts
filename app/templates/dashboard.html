@@ -60,14 +60,19 @@
             <div class="mt-3 d-flex gap-2 flex-wrap">
                 <a href="{{ url_for('static', filename='uploads/' + analysis_id + '/output/raw-data.csv') }}" class="btn btn-primary">Download raw-data.csv</a>
                 <a href="{{ url_for('static', filename='uploads/' + analysis_id + '/output/summary.json') }}" class="btn btn-primary">Download summary.json</a>
+                            <a href="{{ url_for('main.export_results', analysis_id=analysis_id) }}" class="btn btn-primary" title="Download ZIP with all CSV, JSON, and graphs">Download Full Report (ZIP)</a>
             </div>
         </div>
 
         <div class="tab-pane fade" id="tab-activity" role="tabpanel">
-            <div id="dayHourHeatmap" class="chart-box"></div>
+            <div id="monthlyVolume" class="chart-box"></div>
+            <div id="dayHourHeatmap" class="chart-box mt-3"></div>
+            <div id="monthlyRank" class="chart-box mt-3"></div>
             <div id="responseHeatmap" class="chart-box mt-3"></div>
             <div id="responseDistribution" class="chart-box mt-3"></div>
             <div id="conversationStarters" class="chart-box mt-3"></div>
+            <div id="messageLengthDistribution" class="chart-box mt-3"></div>
+            <div id="topEmojis" class="chart-box mt-3"></div>
         </div>
 
         <div class="tab-pane fade" id="tab-topics" role="tabpanel">
@@ -131,7 +136,11 @@
     const applyBtn = document.getElementById("applyFilters");
     const statusEl = document.getElementById("dashboardStatus");
 
-    const chartIds = [
+        const chartIds = [
+        "monthlyVolume",
+        "monthlyRank",
+        "messageLengthDistribution",
+        "topEmojis",
         "responseHeatmap",
         "dayHourHeatmap",
         "responseDistribution",
@@ -145,14 +154,16 @@
         "topDomains"
     ];
 
-    const isMobile = () => window.matchMedia("(max-width: 768px)").matches;
+        const isMobile = () => window.matchMedia("(max-width: 768px)").matches;
     const plotConfig = {
         responsive: true,
         displaylogo: false,
-        modeBarButtonsToRemove: ["select2d", "lasso2d", "autoScale2d"]
+        modeBarButtonsToRemove: ["select2d", "lasso2d", "autoScale2d", "zoom2d", "pan2d"],
+        scrollZoom: false
     };
     const baseLayout = (title, extra = {}) => ({
         title,
+        dragmode: false,
         margin: { t: 52, l: 46, r: 16, b: isMobile() ? 72 : 52 },
         legend: {
             orientation: isMobile() ? "h" : "v",
@@ -160,7 +171,12 @@
             x: isMobile() ? 0 : 1
         },
         hovermode: "closest",
-        ...extra
+        xaxis: { fixedrange: isMobile() },
+        yaxis: { fixedrange: isMobile() },
+        ...extra,
+        // Ensure deep merge of xaxis/yaxis if extra provides them
+        xaxis: { fixedrange: isMobile(), ...extra.xaxis },
+        yaxis: { fixedrange: isMobile(), ...extra.yaxis }
     });
 
     const setStatus = (kind, message) => {
@@ -295,16 +311,29 @@
         `).join("");
     };
 
-    const renderResponse = () => {
-        const p = dashboardData.plotly.response_patterns;
+    
+    const renderActivity = () => {
+        const p = dashboardData.plotly.activity;
         const selected = currentFilters().person;
 
         try {
-            const activityHeatmap = dashboardData.plotly.activity.day_hour_heatmap;
+            Plotly.newPlot("monthlyVolume", [{
+                x: p.monthly_volume.x,
+                y: p.monthly_volume.y,
+                type: "bar",
+                marker: { color: "#2e6f95" },
+                hovertemplate: "%{x}<br>%{y} messages<extra></extra>"
+            }], baseLayout("Message Volume Over Time"), plotConfig);
+            addDownloadButton("monthlyVolume", "kaajd-monthly-volume");
+        } catch {
+            setChartError("monthlyVolume", "Could not render monthly volume chart.");
+        }
+
+        try {
             Plotly.newPlot("dayHourHeatmap", [{
-                x: activityHeatmap.x,
-                y: activityHeatmap.y,
-                z: activityHeatmap.z,
+                x: p.day_hour_heatmap.x,
+                y: p.day_hour_heatmap.y,
+                z: p.day_hour_heatmap.z,
                 type: "heatmap",
                 colorscale: "YlGnBu",
                 hovertemplate: "%{y} %{x}:00<br>%{z} messages<extra></extra>"
@@ -317,6 +346,90 @@
             setChartError("dayHourHeatmap", "Could not render day/hour activity heatmap.");
         }
 
+        try {
+            const traces = (p.monthly_rank || [])
+                .filter((trace) => selected === "all" || trace.name === selected)
+                .map((trace) => ({
+                    x: trace.x,
+                    y: trace.y,
+                    mode: "lines+markers",
+                    name: trace.name,
+                    hovertemplate: "%{x}<br>Rank: %{y}<extra></extra>"
+                }));
+
+            Plotly.newPlot("monthlyRank", traces, baseLayout("Monthly Participation Rank", {
+                yaxis: { title: "Rank (1 = Most Active)", autorange: "reversed" }
+            }), plotConfig);
+            addDownloadButton("monthlyRank", "kaajd-monthly-rank");
+        } catch {
+            setChartError("monthlyRank", "Could not render monthly rank chart.");
+        }
+
+        try {
+            const traces = (p.message_length || [])
+                .filter((trace) => selected === "all" || trace.name === selected)
+                .map((trace) => ({
+                    type: "box",
+                    name: trace.name,
+                    y: trace.y,
+                    boxmean: "sd",
+                    boxpoints: false,
+                    hovertemplate: `${trace.name}<br>%{y} chars<extra></extra>`
+                }));
+
+            Plotly.newPlot(
+                "messageLengthDistribution",
+                traces,
+                baseLayout("Message Length Distribution (characters)", {
+                    yaxis: {
+                        title: "Characters",
+                        rangemode: "tozero",
+                    }
+                }),
+                plotConfig
+            );
+            addDownloadButton("messageLengthDistribution", "kaajd-message-length-distribution");
+        } catch {
+            setChartError("messageLengthDistribution", "Could not render message length distribution.");
+        }
+
+        try {
+            let x, y, title;
+            if (selected === "all" || !p.emojis_per_person[selected]) {
+                x = p.emojis_overall.y;
+                y = p.emojis_overall.x;
+                title = "Top 10 Emojis Overall";
+            } else {
+                x = p.emojis_per_person[selected].y;
+                y = p.emojis_per_person[selected].x;
+                title = `Top Emojis for ${selected}`;
+            }
+
+            // Reverse for horizontal bar chart so biggest is at top
+            const xRev = [...x].reverse();
+            const yRev = [...y].reverse();
+
+            Plotly.newPlot("topEmojis", [{
+                x: xRev,
+                y: yRev,
+                type: "bar",
+                orientation: "h",
+                marker: { color: "#eeb422" },
+                hovertemplate: "%{y} : %{x} times<extra></extra>"
+            }], baseLayout(title, {
+                yaxis: { title: "Emoji", type: "category" },
+                xaxis: { title: "Frequency" }
+            }), plotConfig);
+            addDownloadButton("topEmojis", "kaajd-top-emojis");
+        } catch {
+            setChartError("topEmojis", "Could not render top emojis chart.");
+        }
+    };
+
+    const renderResponse = () => {
+        const p = dashboardData.plotly.response_patterns;
+        const selected = currentFilters().person;
+
         const heatmap = filterSquareHeatmap(p.response_time_heatmap, selected);
         try {
             Plotly.newPlot("responseHeatmap", [{
@@ -325,8 +438,11 @@
                 z: heatmap.z,
                 type: "heatmap",
                 colorscale: "Viridis",
+                zauto: false,
+                zmin: 0,
+                xgap: 1, ygap: 1,
                 hovertemplate: "From %{y}<br>To %{x}<br>%{z:.2f} min<extra></extra>"
-            }], baseLayout(selected === "all" ? "Average Response Time (minutes)" : `Response Times for ${selected}`), plotConfig);
+            }], baseLayout(selected === "all" ? "Average Response Time (minutes)" : `Response Times for ${selected}`, { xaxis: { title: "Replied to (Sender)" }, yaxis: { title: "Replier (Responder)" }, margin: { l: 200 } }), plotConfig);
             addDownloadButton("responseHeatmap", "kaajd-response-heatmap");
         } catch {
             setChartError("responseHeatmap", "Could not render response heatmap.");
@@ -351,7 +467,7 @@
                 traces,
                 baseLayout("Response Time Distribution (minutes)", {
                     yaxis: {
-                        title: "Minutes",
+                        title: "Response time (minutes)",
                         rangemode: "tozero",
                         range: [0, p.response_time_distribution?.max_minutes_cap || 1440]
                     }
@@ -395,30 +511,29 @@
             Plotly.newPlot("mediaPerPerson", [
                 { x, y: media, type: "bar", name: "Media", hovertemplate: "%{x}<br>Media: %{y}<extra></extra>" },
                 { x, y: links, type: "bar", name: "Links", hovertemplate: "%{x}<br>Links: %{y}<extra></extra>" }
-            ], baseLayout("Media/Link Messages per Person", { barmode: "stack" }), plotConfig);
+            ], baseLayout("Media/Link Messages per Person", { barmode: "stack", yaxis: { title: "Number of messages" } }), plotConfig);
             addDownloadButton("mediaPerPerson", "kaajd-media-links-per-person");
         } catch {
             setChartError("mediaPerPerson", "Could not render per-person media chart.");
         }
 
-        const traces = p.monthly_traces
-            .filter((trace) => selected === "all" || trace.person === selected)
-            .map((trace) => ({
+                const traces = p.monthly_traces.map((trace) => ({
                 x: trace.x,
                 y: trace.y,
                 mode: "lines",
+                stackgroup: "one",
                 name: trace.name,
                 hovertemplate: "%{x}<br>%{y} messages<extra></extra>"
             }));
 
         try {
-            Plotly.newPlot("mediaMonthly", traces, baseLayout("Monthly Media/Link Trends"), plotConfig);
+            Plotly.newPlot("mediaMonthly", traces, baseLayout("Monthly Media/Link Trends (Group Total)"), plotConfig);
             addDownloadButton("mediaMonthly", "kaajd-media-monthly-trends");
         } catch {
             setChartError("mediaMonthly", "Could not render monthly media/link chart.");
         }
         try {
-            Plotly.newPlot("topDomains", [{ x: p.top_domains_bar.x, y: p.top_domains_bar.y, type: "bar", marker: { color: "#1f8a70" }, hovertemplate: "%{x}<br>%{y} shares<extra></extra>" }], baseLayout("Top Shared Domains"), plotConfig);
+            Plotly.newPlot("topDomains", [{ x: p.top_domains_bar.x, y: p.top_domains_bar.y, type: "bar", marker: { color: "#1f8a70" }, hovertemplate: "%{x}<br>%{y} shares<extra></extra>" }], baseLayout("Top Shared Domains", { yaxis: { title: "Number of links" } }), plotConfig);
             addDownloadButton("topDomains", "kaajd-top-shared-domains");
         } catch {
             setChartError("topDomains", "Could not render top domains chart.");
@@ -441,11 +556,22 @@
             setChartError("topicsHeatmap", "Could not render topics heatmap.");
         }
 
-        const labels = p.topic_terms.labels;
-        const values = p.topic_terms.terms.map((termsList) => termsList.slice(0, 5).join(", "));
+                const labels = p.topic_terms.labels;
+        const termsList = p.topic_terms.terms;
+        const weightsList = p.topic_terms.weights;
+        
+        // Flatten into X=topics, Y=terms heatmap, z=weights
+        let allTerms = Array.from(new Set(termsList.flat()));
+        let zTopics = allTerms.map(term => {
+            return labels.map((label, idx) => {
+                let termIdx = termsList[idx].indexOf(term);
+                return termIdx >= 0 ? weightsList[idx][termIdx] : 0;
+            });
+        });
+
         try {
-            Plotly.newPlot("topicTerms", [{ x: labels, y: values.map((_, idx) => idx + 1), type: "bar", text: values, textposition: "auto", orientation: "v", hovertemplate: "%{x}<br>%{text}<extra></extra>" }], baseLayout("Topic Labels (Top Terms)", { yaxis: { visible: false } }), plotConfig);
-            addDownloadButton("topicTerms", "kaajd-topic-labels");
+            Plotly.newPlot("topicTerms", [{ x: labels, y: allTerms, z: zTopics, type: "heatmap", colorscale: "Greens", hovertemplate: "%{x}<br>%{y}<br>Weight: %{z:.4f}<extra></extra>" }], baseLayout("Topic Term Weights"), plotConfig);
+            addDownloadButton("topicTerms", "kaajd-topic-term-weights");
         } catch {
             setChartError("topicTerms", "Could not render topic labels chart.");
         }
@@ -457,13 +583,13 @@
         const affinity = filterSquareHeatmap(p.affinity_heatmap, selected);
         const correlation = filterSquareHeatmap(p.correlation_heatmap, selected);
         try {
-            Plotly.newPlot("affinityHeatmap", [{ x: affinity.x, y: affinity.y, z: affinity.z, type: "heatmap", colorscale: "Blues", hovertemplate: "%{y} -> %{x}<br>Affinity %{z:.4f}<extra></extra>" }], baseLayout(selected === "all" ? "Affinity Scores" : `Affinity Around ${selected}`), plotConfig);
+            Plotly.newPlot("affinityHeatmap", [{ x: affinity.x, y: affinity.y, z: affinity.z, type: "heatmap", colorscale: [[0, "white"], [1, "rgb(8,48,107)"]], hovertemplate: "%{y} -> %{x}<br>Affinity %{z:.4f}<extra></extra>" }], baseLayout(selected === "all" ? "Affinity Scores" : `Affinity Around ${selected}`, { xaxis: { title: "Replied to →" }, yaxis: { title: "Replier ↓" }, margin: { l: 200 } }), plotConfig);
             addDownloadButton("affinityHeatmap", "kaajd-affinity-heatmap");
         } catch {
             setChartError("affinityHeatmap", "Could not render affinity heatmap.");
         }
         try {
-            Plotly.newPlot("correlationHeatmap", [{ x: correlation.x, y: correlation.y, z: correlation.z, type: "heatmap", colorscale: "RdBu", zmid: 0, hovertemplate: "%{y} vs %{x}<br>r=%{z:.3f}<extra></extra>" }], baseLayout(selected === "all" ? "Daily Activity Correlation" : `Correlation Around ${selected}`), plotConfig);
+            Plotly.newPlot("correlationHeatmap", [{ x: correlation.x, y: correlation.y, z: correlation.z, type: "heatmap", colorscale: "RdBu", zmid: 0, hovertemplate: "%{y} vs %{x}<br>r=%{z:.3f}<extra></extra>" }], baseLayout(selected === "all" ? "Daily Activity Correlation" : `Correlation Around ${selected}`, { xaxis: { title: "Participant" }, yaxis: { title: "Participant" }, margin: { l: 200 } }), plotConfig);
             addDownloadButton("correlationHeatmap", "kaajd-correlation-heatmap");
         } catch {
             setChartError("correlationHeatmap", "Could not render activity correlation heatmap.");
@@ -505,6 +631,7 @@
             return;
         }
         renderCards();
+        renderActivity();
         renderResponse();
         renderMedia();
         renderTopics();

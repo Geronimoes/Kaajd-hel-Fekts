@@ -2,8 +2,15 @@ from __future__ import annotations
 
 from collections import defaultdict
 from typing import Any
+import emoji
 
 import pandas as pd
+
+BOT_PARTICIPANTS = {"meta ai"}
+
+
+def _truncate(name: str, max_len: int = 22) -> str:
+    return name if len(name) <= max_len else name[: max_len - 1] + "…"
 
 
 def build_plotly_payloads(
@@ -24,45 +31,42 @@ def build_plotly_payloads(
 
 
 def _activity_payload(raw_data_df: pd.DataFrame) -> dict[str, Any]:
+    empty_payload = {
+        "day_hour_heatmap": {
+            "x": [str(hour) for hour in range(24)],
+            "y": ["Sun", "Sat", "Fri", "Thu", "Wed", "Tue", "Mon"],
+            "z": [[0 for _ in range(24)] for _ in range(7)],
+        },
+        "monthly_volume": {"x": [], "y": []},
+        "message_length": [],
+        "emojis_overall": {"x": [], "y": []},
+        "emojis_per_person": {},
+        "monthly_rank": [],
+    }
+
     if raw_data_df.empty:
-        return {
-            "day_hour_heatmap": {
-                "x": [str(hour) for hour in range(24)],
-                "y": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-                "z": [[0 for _ in range(24)] for _ in range(7)],
-            }
-        }
+        return empty_payload
 
     activity_df = raw_data_df.copy()
     if "IsSystemMessage" in activity_df.columns:
         activity_df = activity_df[~activity_df["IsSystemMessage"]]
 
     if activity_df.empty:
-        return {
-            "day_hour_heatmap": {
-                "x": [str(hour) for hour in range(24)],
-                "y": ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
-                "z": [[0 for _ in range(24)] for _ in range(7)],
-            }
-        }
+        return empty_payload
 
     activity_df["DateTime"] = pd.to_datetime(
         activity_df["Date"].astype(str) + " " + activity_df["Time"].astype(str),
         format="%d-%m-%Y %H:%M",
         errors="coerce",
     )
-    activity_df = activity_df[activity_df["DateTime"].notna()]
+    activity_df = activity_df.dropna(subset=["DateTime"])
 
+    if activity_df.empty:
+        return empty_payload
+
+    # Heatmap
     weekday_labels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"]
     hour_labels = [str(hour) for hour in range(24)]
-    if activity_df.empty:
-        return {
-            "day_hour_heatmap": {
-                "x": hour_labels,
-                "y": weekday_labels,
-                "z": [[0 for _ in range(24)] for _ in range(7)],
-            }
-        }
 
     activity_df["Weekday"] = activity_df["DateTime"].dt.weekday
     activity_df["Hour"] = activity_df["DateTime"].dt.hour
@@ -70,12 +74,90 @@ def _activity_payload(raw_data_df: pd.DataFrame) -> dict[str, Any]:
     matrix = matrix.reindex(index=range(7), fill_value=0)
     matrix = matrix.reindex(range(24), axis=1, fill_value=0)
 
+    # Reverse to make Sun at top (index 6 goes to 0) -> [Sun, Sat, Fri, Thu, Wed, Tue, Mon]
+    z_heatmap = matrix.values.tolist()
+    z_heatmap_reversed = list(reversed(z_heatmap))
+    y_labels_reversed = list(reversed(weekday_labels))
+
+    # Monthly volume
+    activity_df["Month"] = activity_df["DateTime"].dt.to_period("M").astype(str)
+    monthly_counts = activity_df.groupby("Month").size().reset_index(name="Count")
+    monthly_volume = {
+        "x": monthly_counts["Month"].tolist(),
+        "y": monthly_counts["Count"].tolist(),
+    }
+
+    # Message length distribution per person
+    activity_df["Person"] = activity_df["Person"].fillna("").astype(str)
+    people_lengths = defaultdict(list)
+    for row in activity_df.itertuples():
+        person = row.Person.strip()
+        if person:
+            people_lengths[person].append(len(str(row.Message)))
+
+    message_length_traces = []
+    for p, lengths in sorted(people_lengths.items()):
+        message_length_traces.append({"name": p, "y": lengths})
+
+    # Emojis
+    def extract_emojis(msg: str):
+        return [item["emoji"] for item in emoji.emoji_list(str(msg))]
+
+    activity_df["Emojis"] = activity_df["Message"].apply(extract_emojis)
+    all_emojis_list = sum(activity_df["Emojis"], [])
+    emoji_counts = pd.Series(all_emojis_list).value_counts().head(10)
+    emojis_overall = {
+        "x": emoji_counts.index.tolist(),
+        "y": emoji_counts.values.tolist(),
+    }
+
+    emojis_per_person = {}
+    for person in sorted(people_lengths.keys()):
+        person_emojis = sum(activity_df[activity_df["Person"] == person]["Emojis"], [])
+        if person_emojis:
+            top_3 = pd.Series(person_emojis).value_counts().head(3)
+            emojis_per_person[person] = {
+                "x": top_3.index.tolist(),
+                "y": top_3.values.tolist(),
+            }
+
+    # Monthly Rank (Bump Chart)
+    # Ranks 1 = most active.
+    monthly_rank_traces = []
+    if not activity_df.empty:
+        person_month_counts = (
+            activity_df.groupby(["Month", "Person"]).size().reset_index(name="Count")
+        )
+        # Sort by month and then count desc
+        person_month_counts = person_month_counts.sort_values(
+            by=["Month", "Count"], ascending=[True, False]
+        )
+        # Assign rank
+        person_month_counts["Rank"] = person_month_counts.groupby("Month")[
+            "Count"
+        ].rank(method="min", ascending=False)
+
+        for person in person_month_counts["Person"].unique():
+            person_data = person_month_counts[person_month_counts["Person"] == person]
+            monthly_rank_traces.append(
+                {
+                    "name": person,
+                    "x": person_data["Month"].tolist(),
+                    "y": person_data["Rank"].tolist(),
+                }
+            )
+
     return {
         "day_hour_heatmap": {
             "x": hour_labels,
-            "y": weekday_labels,
-            "z": matrix.values.tolist(),
-        }
+            "y": y_labels_reversed,
+            "z": z_heatmap_reversed,
+        },
+        "monthly_volume": monthly_volume,
+        "message_length": message_length_traces,
+        "emojis_overall": emojis_overall,
+        "emojis_per_person": emojis_per_person,
+        "monthly_rank": monthly_rank_traces,
     }
 
 
@@ -83,6 +165,24 @@ def _response_patterns_payload(analysis: dict[str, Any]) -> dict[str, Any]:
     response_pairs = analysis.get("response_pairs", [])
     response_delays = analysis.get("response_delay_distribution", [])
     starters = analysis.get("conversation_starters", [])
+
+    response_pairs = [
+        p
+        for p in response_pairs
+        if str(p.get("from")).lower() not in BOT_PARTICIPANTS
+        and str(p.get("to")).lower() not in BOT_PARTICIPANTS
+    ]
+    response_delays = [
+        d
+        for d in response_delays
+        if str(d.get("person")).lower() not in BOT_PARTICIPANTS
+    ]
+    starters = [
+        s for s in starters if str(s.get("person")).lower() not in BOT_PARTICIPANTS
+    ]
+    starters = sorted(
+        starters, key=lambda x: x.get("conversations_started", 0), reverse=True
+    )
 
     heatmap_people = sorted(
         {pair.get("from") for pair in response_pairs if pair.get("from")}
@@ -117,7 +217,7 @@ def _response_patterns_payload(analysis: dict[str, Any]) -> dict[str, Any]:
 
     distribution_traces = []
     for person, values in sorted(per_person_distribution.items()):
-        capped_values = [min(value, 24 * 60) for value in values]
+        capped_values = [min(value, 240) for value in values]  # Cap at 4 hours
         distribution_traces.append(
             {
                 "name": person,
@@ -127,13 +227,13 @@ def _response_patterns_payload(analysis: dict[str, Any]) -> dict[str, Any]:
 
     return {
         "response_time_heatmap": {
-            "x": heatmap_people,
-            "y": heatmap_people,
+            "x": [_truncate(p) for p in heatmap_people],
+            "y": [_truncate(p) for p in heatmap_people],
             "z": z,
         },
         "response_time_distribution": {
             "traces": distribution_traces,
-            "max_minutes_cap": 24 * 60,
+            "max_minutes_cap": 240,
         },
         "conversation_starters_bar": {
             "x": [item.get("person") for item in starters],
@@ -150,42 +250,33 @@ def _media_links_payload(analysis: dict[str, Any]) -> dict[str, Any]:
     domains = analysis.get("top_domains", [])
     monthly = analysis.get("by_month", [])
 
-    month_person_media: dict[tuple[str, str], int] = defaultdict(int)
-    month_person_links: dict[tuple[str, str], int] = defaultdict(int)
+    month_media: dict[str, int] = defaultdict(int)
+    month_links: dict[str, int] = defaultdict(int)
     months: set[str] = set()
-    people: set[str] = set()
     for row in monthly:
         month = str(row.get("Month", ""))
-        person = str(row.get("Person", ""))
-        if not month or not person:
+        if not month:
             continue
         months.add(month)
-        people.add(person)
-        month_person_media[(month, person)] = int(row.get("media_messages", 0))
-        month_person_links[(month, person)] = int(row.get("link_messages", 0))
+        month_media[month] += int(row.get("media_messages", 0))
+        month_links[month] += int(row.get("link_messages", 0))
 
     sorted_months = sorted(months)
-    sorted_people = sorted(people)
-    traces = []
-    for person in sorted_people:
-        traces.append(
-            {
-                "name": f"{person} media",
-                "x": sorted_months,
-                "y": [month_person_media[(month, person)] for month in sorted_months],
-                "series": "media",
-                "person": person,
-            }
-        )
-        traces.append(
-            {
-                "name": f"{person} links",
-                "x": sorted_months,
-                "y": [month_person_links[(month, person)] for month in sorted_months],
-                "series": "links",
-                "person": person,
-            }
-        )
+
+    traces = [
+        {
+            "name": "Media",
+            "x": sorted_months,
+            "y": [month_media[month] for month in sorted_months],
+        },
+        {
+            "name": "Links",
+            "x": sorted_months,
+            "y": [month_links[month] for month in sorted_months],
+        },
+    ]
+
+    top_15_domains = domains[:15]
 
     return {
         "per_person_stacked": {
@@ -195,8 +286,8 @@ def _media_links_payload(analysis: dict[str, Any]) -> dict[str, Any]:
             "text": [item.get("text_messages", 0) for item in per_person],
         },
         "top_domains_bar": {
-            "x": [item.get("domain") for item in domains],
-            "y": [item.get("count", 0) for item in domains],
+            "x": [item.get("domain") for item in top_15_domains],
+            "y": [item.get("count", 0) for item in top_15_domains],
         },
         "monthly_traces": traces,
     }
@@ -208,11 +299,14 @@ def _topics_payload(analysis: dict[str, Any]) -> dict[str, Any]:
 
     topic_labels = []
     topic_terms = []
+    topic_weights = []
     for topic in topics:
         label = f"Topic {topic.get('topic_id')}"
         terms = [term.get("term") for term in topic.get("top_terms", [])]
+        weights = [term.get("weight") for term in topic.get("top_terms", [])]
         topic_labels.append(label)
         topic_terms.append(terms)
+        topic_weights.append(weights)
 
     trend_rows = []
     for row in monthly_trends:
@@ -230,6 +324,7 @@ def _topics_payload(analysis: dict[str, Any]) -> dict[str, Any]:
         "topic_terms": {
             "labels": topic_labels,
             "terms": topic_terms,
+            "weights": topic_weights,
         },
         "monthly_trend_rows": trend_rows,
     }
@@ -238,6 +333,19 @@ def _topics_payload(analysis: dict[str, Any]) -> dict[str, Any]:
 def _relationships_payload(analysis: dict[str, Any]) -> dict[str, Any]:
     affinity = analysis.get("affinity_scores", [])
     correlations = analysis.get("activity_correlations", [])
+
+    affinity = [
+        row
+        for row in affinity
+        if str(row.get("from")).lower() not in BOT_PARTICIPANTS
+        and str(row.get("to")).lower() not in BOT_PARTICIPANTS
+    ]
+    correlations = [
+        row
+        for row in correlations
+        if str(row.get("person_a")).lower() not in BOT_PARTICIPANTS
+        and str(row.get("person_b")).lower() not in BOT_PARTICIPANTS
+    ]
 
     people = sorted(
         {row.get("from") for row in affinity if row.get("from")}
@@ -273,13 +381,13 @@ def _relationships_payload(analysis: dict[str, Any]) -> dict[str, Any]:
 
     return {
         "affinity_heatmap": {
-            "x": people,
-            "y": people,
+            "x": [_truncate(p) for p in people],
+            "y": [_truncate(p) for p in people],
             "z": affinity_z,
         },
         "correlation_heatmap": {
-            "x": corr_people,
-            "y": corr_people,
+            "x": [_truncate(p) for p in corr_people],
+            "y": [_truncate(p) for p in corr_people],
             "z": corr_z,
         },
         "two_person_balance": analysis.get("two_person_balance"),
