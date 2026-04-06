@@ -8,8 +8,8 @@
         <h1 class="h3 mb-0">Interactive analysis</h1>
         <p class="text-muted mb-0">Overview and deep-dive analytics for this chat export.</p>
     </div>
-        <div class="d-flex gap-2">
-        <button id="clearCacheBtn" class="btn btn-outline-danger" title="Delete this chat from the database to force re-parsing next time">Delete Analysis Cache</button>
+        <div class="d-flex gap-2 flex-wrap">
+        <button id="clearCacheBtn" class="btn btn-outline-danger" title="Permanently delete this analysis from the database and disk. You will need to re-upload the file to view it again.">Delete Analysis</button>
         <a href="{{ url_for('main.upload_file') }}" class="btn btn-outline-secondary">Analyze another chat</a>
     </div>
 </div>
@@ -69,35 +69,45 @@
 
         <div class="tab-pane fade" id="tab-activity" role="tabpanel">
             <div id="monthlyVolume" class="chart-box"></div>
+            <p class="text-muted small mt-1">Total non-system messages sent per calendar month across all participants.</p>
             <div id="dayHourHeatmap" class="chart-box mt-3"></div>
+            <p class="text-muted small mt-1">Heat intensity = number of messages sent in that day-of-week × hour-of-day combination over the entire chat history. Darker = more quiet, lighter = more active.</p>
             <div id="monthlyRank" class="chart-box mt-3"></div>
+            <p class="text-muted small mt-1">Each person's rank by message count within each calendar month. Rank 1 = most active that month. Shows shifts in who drives the conversation over time.</p>
             <div id="responseHeatmap" class="chart-box mt-3"></div>
-            <p class="text-muted small mt-1">Average time elapsed between a message and the first reply by another person.</p>
+            <p class="text-muted small mt-1">Average minutes from the last message by the <em>sender</em> (column) until the first reply by the <em>responder</em> (row). Only cross-person replies within a continuous message chain are counted. Gray = no data for that pair. Bot participants (Meta AI) are excluded.</p>
             <div id="responseDistribution" class="chart-box mt-3"></div>
+            <p class="text-muted small mt-1">Distribution of individual response times per person. Each box shows median, IQR, and outliers. Response times are capped at 4 hours (240 min) so the chart stays readable — longer gaps are usually offline periods, not true response times.</p>
             <div id="conversationStarters" class="chart-box mt-3"></div>
-            <p class="text-muted small mt-1">Counts messages that were sent after a gap of at least 1 hour of silence.</p>
+            <p class="text-muted small mt-1">A "conversation" begins when someone sends a message after at least 1 hour of silence. This counts how often each person sends the first message in such a new conversation window.</p>
             <div id="messageLengthDistribution" class="chart-box mt-3"></div>
+            <p class="text-muted small mt-1">Distribution of message length in characters per person. Each box shows the median, interquartile range (IQR), and spread. Longer messages suggest a more verbose or expressive style.</p>
             <div id="topEmojis" class="chart-box mt-3"></div>
+            <p class="text-muted small mt-1">Top 10 emoji characters by frequency across the entire chat (or for the selected person). Select a person in the filter above to see their personal emoji signature.</p>
         </div>
 
         <div class="tab-pane fade" id="tab-topics" role="tabpanel">
             <div id="topicsHeatmap" class="chart-box"></div>
-            <p class="text-muted small mt-1">Extracted using TF-IDF and Non-Negative Matrix Factorization (NMF) to find underlying word clusters.</p>
+            <p class="text-muted small mt-1">Monthly TF-IDF scores for the top recurring terms. TF-IDF (Term Frequency–Inverse Document Frequency) highlights words that are unusually common in a given month relative to the full chat history. Brighter = more characteristic of that month.</p>
             <div id="topicTerms" class="chart-box mt-3"></div>
+            <p class="text-muted small mt-1">NMF (Non-Negative Matrix Factorization) groups words into latent topics by finding co-occurrence patterns. Each column is a discovered topic; each row is a term; color intensity shows how strongly that term defines that topic. Topics are unlabelled — interpret them by looking at their top terms together.</p>
         </div>
 
         <div class="tab-pane fade" id="tab-relationships" role="tabpanel">
             <div id="affinityHeatmap" class="chart-box"></div>
-            <p class="text-muted small mt-1">Affinity measures how often person A replies to person B relative to their overall reply rate.</p>
+            <p class="text-muted small mt-1">Affinity score = (replies from A to B) / (total replies from A). A value of 0.5 means half of A's replies go to B. White = no replies between this pair; dark blue = high affinity. Bot participants (Meta AI) are excluded. Read rows as replier, columns as recipient.</p>
             <div id="correlationHeatmap" class="chart-box mt-3"></div>
-            <p class="text-muted small mt-1">Pearson correlation of daily message counts between pairs of people.</p>
+            <p class="text-muted small mt-1">Pearson correlation of daily message counts. Red = people who tend to be active on the same days; blue = people whose activity diverges. A high correlation doesn't mean they talk to each other — it means they're online at the same times. Bot participants are excluded.</p>
             <div id="twoPersonBalance" class="mt-3"></div>
         </div>
 
         <div class="tab-pane fade" id="tab-media" role="tabpanel">
             <div id="mediaPerPerson" class="chart-box"></div>
+            <p class="text-muted small mt-1">Total media messages (photos, videos, voice notes, stickers — flagged as "<em>Media omitted</em>" in the export) and link-containing messages per person over the entire chat history.</p>
             <div id="mediaMonthly" class="chart-box mt-3"></div>
+            <p class="text-muted small mt-1">Group-wide monthly totals for media and link messages stacked as areas. Peaks indicate months with high photo/video sharing or news/link activity.</p>
             <div id="topDomains" class="chart-box mt-3"></div>
+            <p class="text-muted small mt-1">Top 15 domains extracted from shared URLs. Domains are normalised (e.g. <code>youtu.be</code> → <code>youtube.com</code>) to avoid splitting counts across aliases.</p>
         </div>
 
         <div class="tab-pane fade" id="tab-static" role="tabpanel">
@@ -191,28 +201,38 @@
     ];
 
         const isMobile = () => window.matchMedia("(max-width: 768px)").matches;
+    // BOT_PARTICIPANTS: excluded from person dropdown (must match charts_payloads.py)
+    const BOT_PARTICIPANTS = new Set(["meta ai"]);
     const plotConfig = {
         responsive: true,
         displaylogo: false,
         modeBarButtonsToRemove: ["select2d", "lasso2d", "autoScale2d", "zoom2d", "pan2d"],
-        scrollZoom: false
+        scrollZoom: false,
+        // Prevent touch events from resizing the chart on mobile
+        doubleClick: false
     };
+    // Explicit height prevents Plotly's autosize from growing charts unboundedly on mobile
+    // when touch events trigger a relayout cycle.
+    const CHART_HEIGHT = isMobile() ? 360 : 420;
+    const HEATMAP_HEIGHT = isMobile() ? 340 : 420;
     const baseLayout = (title, extra = {}) => ({
         title,
         dragmode: false,
-        margin: { t: 52, l: 46, r: 16, b: isMobile() ? 72 : 52 },
+        height: CHART_HEIGHT,
+        autosize: true,
+        margin: { t: 52, l: 46, r: 16, b: isMobile() ? 80 : 52 },
         legend: {
             orientation: isMobile() ? "h" : "v",
-            y: isMobile() ? -0.3 : 1,
+            y: isMobile() ? -0.35 : 1,
             x: isMobile() ? 0 : 1
         },
         hovermode: "closest",
-        xaxis: { fixedrange: isMobile() },
-        yaxis: { fixedrange: isMobile() },
+        xaxis: { fixedrange: true, ...extra.xaxis },
+        yaxis: { fixedrange: true, ...extra.yaxis },
         ...extra,
-        // Ensure deep merge of xaxis/yaxis if extra provides them
-        xaxis: { fixedrange: isMobile(), ...extra.xaxis },
-        yaxis: { fixedrange: isMobile(), ...extra.yaxis }
+        // Re-apply axis overrides so they always win over the spread
+        xaxis: { fixedrange: true, ...extra.xaxis },
+        yaxis: { fixedrange: true, ...extra.yaxis }
     });
 
     const setStatus = (kind, message) => {
@@ -476,9 +496,10 @@
                 colorscale: "Viridis",
                 zauto: false,
                 zmin: 0,
+                nacolor: "lightgray",
                 xgap: 1, ygap: 1,
                 hovertemplate: "From %{y}<br>To %{x}<br>%{z:.2f} min<extra></extra>"
-            }], baseLayout(selected === "all" ? "Average Response Time (minutes)" : `Response Times for ${selected}`, { xaxis: { title: "Replied to (Sender)" }, yaxis: { title: "Replier (Responder)" }, margin: { l: 200 } }), plotConfig);
+            }], { ...baseLayout(selected === "all" ? "Average Response Time (minutes)" : `Response Times for ${selected}`, { xaxis: { title: "Replied to (Sender)" }, yaxis: { title: "Replier (Responder)" } }), height: HEATMAP_HEIGHT, margin: { l: 200, t: 52, r: 16, b: isMobile() ? 80 : 52 } }, plotConfig);
             addDownloadButton("responseHeatmap", "kaajd-response-heatmap");
         } catch {
             setChartError("responseHeatmap", "Could not render response heatmap.");
@@ -619,13 +640,13 @@
         const affinity = filterSquareHeatmap(p.affinity_heatmap, selected);
         const correlation = filterSquareHeatmap(p.correlation_heatmap, selected);
         try {
-            Plotly.newPlot("affinityHeatmap", [{ x: affinity.x, y: affinity.y, z: affinity.z, type: "heatmap", colorscale: [[0, "white"], [1, "rgb(8,48,107)"]], hovertemplate: "%{y} -> %{x}<br>Affinity %{z:.4f}<extra></extra>" }], baseLayout(selected === "all" ? "Affinity Scores" : `Affinity Around ${selected}`, { xaxis: { title: "Replied to →" }, yaxis: { title: "Replier ↓" }, margin: { l: 200 } }), plotConfig);
+            Plotly.newPlot("affinityHeatmap", [{ x: affinity.x, y: affinity.y, z: affinity.z, type: "heatmap", colorscale: [[0, "white"], [1, "rgb(8,48,107)"]], hovertemplate: "%{y} → %{x}<br>Affinity %{z:.4f}<extra></extra>" }], { ...baseLayout(selected === "all" ? "Affinity Scores" : `Affinity Around ${selected}`, { xaxis: { title: "Replied to →" }, yaxis: { title: "Replier ↓" } }), height: HEATMAP_HEIGHT, margin: { l: 200, t: 52, r: 16, b: isMobile() ? 80 : 52 } }, plotConfig);
             addDownloadButton("affinityHeatmap", "kaajd-affinity-heatmap");
         } catch {
             setChartError("affinityHeatmap", "Could not render affinity heatmap.");
         }
         try {
-            Plotly.newPlot("correlationHeatmap", [{ x: correlation.x, y: correlation.y, z: correlation.z, type: "heatmap", colorscale: "RdBu", zmid: 0, hovertemplate: "%{y} vs %{x}<br>r=%{z:.3f}<extra></extra>" }], baseLayout(selected === "all" ? "Daily Activity Correlation" : `Correlation Around ${selected}`, { xaxis: { title: "Participant" }, yaxis: { title: "Participant" }, margin: { l: 200 } }), plotConfig);
+            Plotly.newPlot("correlationHeatmap", [{ x: correlation.x, y: correlation.y, z: correlation.z, type: "heatmap", colorscale: "RdBu", zmid: 0, hovertemplate: "%{y} vs %{x}<br>r=%{z:.3f}<extra></extra>" }], { ...baseLayout(selected === "all" ? "Daily Activity Correlation" : `Correlation Around ${selected}`, { xaxis: { title: "Participant" }, yaxis: { title: "Participant" } }), height: HEATMAP_HEIGHT, margin: { l: 200, t: 52, r: 16, b: isMobile() ? 80 : 52 } }, plotConfig);
             addDownloadButton("correlationHeatmap", "kaajd-correlation-heatmap");
         } catch {
             setChartError("correlationHeatmap", "Could not render activity correlation heatmap.");
@@ -643,7 +664,9 @@
         while (personFilterEl.options.length > 1) {
             personFilterEl.remove(1);
         }
-        const people = dashboardData.context.top_people.map((person) => person.person);
+        const people = dashboardData.context.top_people
+            .map((person) => person.person)
+            .filter((name) => !BOT_PARTICIPANTS.has(name.toLowerCase()));
         people.forEach((person) => {
             const option = document.createElement("option");
             option.value = person;

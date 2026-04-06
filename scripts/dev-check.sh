@@ -5,7 +5,7 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 PYTHON_BIN="${ROOT_DIR}/.venv/bin/python"
 CHAT_FILE="${ROOT_DIR}/data/chat.txt"
 API_BASE="http://127.0.0.1:5000"
-TMP_DIR=""
+TMP_DIR="$(mktemp -d)"
 
 if [[ ! -x "${PYTHON_BIN}" ]]; then
   echo "Missing virtualenv Python at ${PYTHON_BIN}. Create it with: python3 -m venv .venv"
@@ -54,37 +54,32 @@ cleanup() {
 trap cleanup EXIT
 
 sleep 2
-CONTEXT_JSON="$(curl -fsS "${API_BASE}/api/chat/1/context")"
-MESSAGES_JSON="$(curl -fsS "${API_BASE}/api/chat/1/messages?limit=3")"
-RESPONSE_JSON="$(curl -fsS "${API_BASE}/api/chat/1/response-patterns")"
-MEDIA_JSON="$(curl -fsS "${API_BASE}/api/chat/1/media-links")"
-TOPICS_JSON="$(curl -fsS "${API_BASE}/api/chat/1/topics?max_topics=4")"
-RELATIONSHIPS_JSON="$(curl -fsS "${API_BASE}/api/chat/1/relationships")"
-DASHBOARD_JSON="$(curl -fsS "${API_BASE}/api/chat/1/dashboard-data")"
+curl -fsS "${API_BASE}/api/chat/1/context"                  > "${TMP_DIR}/context.json"
+curl -fsS "${API_BASE}/api/chat/1/messages?limit=3"         > "${TMP_DIR}/messages.json"
+curl -fsS "${API_BASE}/api/chat/1/response-patterns"        > "${TMP_DIR}/response.json"
+curl -fsS "${API_BASE}/api/chat/1/media-links"              > "${TMP_DIR}/media.json"
+curl -fsS "${API_BASE}/api/chat/1/topics?max_topics=4"      > "${TMP_DIR}/topics.json"
+curl -fsS "${API_BASE}/api/chat/1/relationships"            > "${TMP_DIR}/relationships.json"
+curl -fsS "${API_BASE}/api/chat/1/dashboard-data"           > "${TMP_DIR}/dashboard.json"
 
-TMP_DIR="$(mktemp -d)"
-
-printf '%s' "${DASHBOARD_JSON}" > "${TMP_DIR}/dashboard.json"
-
-export CONTEXT_JSON
-export MESSAGES_JSON
-export RESPONSE_JSON
-export MEDIA_JSON
-export TOPICS_JSON
-export RELATIONSHIPS_JSON
-export DASHBOARD_JSON_FILE="${TMP_DIR}/dashboard.json"
+export API_TMP_DIR="${TMP_DIR}"
 "${PYTHON_BIN}" - <<'PY'
 import json
 import os
 
-context = json.loads(os.environ["CONTEXT_JSON"])
-messages = json.loads(os.environ["MESSAGES_JSON"])
-response_patterns = json.loads(os.environ["RESPONSE_JSON"])
-media_links = json.loads(os.environ["MEDIA_JSON"])
-topics = json.loads(os.environ["TOPICS_JSON"])
-relationships = json.loads(os.environ["RELATIONSHIPS_JSON"])
-with open(os.environ["DASHBOARD_JSON_FILE"], "r", encoding="utf-8") as handle:
-    dashboard = json.load(handle)
+d = os.environ["API_TMP_DIR"]
+
+def load(name):
+    with open(f"{d}/{name}.json", "r", encoding="utf-8") as fh:
+        return json.load(fh)
+
+context         = load("context")
+messages        = load("messages")
+response_patterns = load("response")
+media_links     = load("media")
+topics          = load("topics")
+relationships   = load("relationships")
+dashboard       = load("dashboard")
 
 if "chat" not in context or "totals" not in context:
     raise SystemExit("Context API check failed")

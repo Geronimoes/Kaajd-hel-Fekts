@@ -87,12 +87,12 @@ def _activity_payload(raw_data_df: pd.DataFrame) -> dict[str, Any]:
         "y": monthly_counts["Count"].tolist(),
     }
 
-    # Message length distribution per person
+    # Message length distribution per person (exclude bots)
     activity_df["Person"] = activity_df["Person"].fillna("").astype(str)
     people_lengths = defaultdict(list)
     for row in activity_df.itertuples():
         person = row.Person.strip()
-        if person:
+        if person and person.lower() not in BOT_PARTICIPANTS:
             people_lengths[person].append(len(str(row.Message)))
 
     message_length_traces = []
@@ -113,6 +113,8 @@ def _activity_payload(raw_data_df: pd.DataFrame) -> dict[str, Any]:
 
     emojis_per_person = {}
     for person in sorted(people_lengths.keys()):
+        if person.lower() in BOT_PARTICIPANTS:
+            continue
         person_emojis = sum(activity_df[activity_df["Person"] == person]["Emojis"], [])
         if person_emojis:
             top_3 = pd.Series(person_emojis).value_counts().head(3)
@@ -121,31 +123,32 @@ def _activity_payload(raw_data_df: pd.DataFrame) -> dict[str, Any]:
                 "y": top_3.values.tolist(),
             }
 
-    # Monthly Rank (Bump Chart)
-    # Ranks 1 = most active.
+    # Monthly Rank (Bump Chart) — exclude bots
     monthly_rank_traces = []
     if not activity_df.empty:
-        person_month_counts = (
-            activity_df.groupby(["Month", "Person"]).size().reset_index(name="Count")
-        )
-        # Sort by month and then count desc
-        person_month_counts = person_month_counts.sort_values(
-            by=["Month", "Count"], ascending=[True, False]
-        )
-        # Assign rank
-        person_month_counts["Rank"] = person_month_counts.groupby("Month")[
-            "Count"
-        ].rank(method="min", ascending=False)
-
-        for person in person_month_counts["Person"].unique():
-            person_data = person_month_counts[person_month_counts["Person"] == person]
-            monthly_rank_traces.append(
-                {
-                    "name": person,
-                    "x": person_data["Month"].tolist(),
-                    "y": person_data["Rank"].tolist(),
-                }
+        rank_df = activity_df[~activity_df["Person"].str.lower().isin(BOT_PARTICIPANTS)]
+        if not rank_df.empty:
+            person_month_counts = (
+                rank_df.groupby(["Month", "Person"]).size().reset_index(name="Count")
             )
+            person_month_counts = person_month_counts.sort_values(
+                by=["Month", "Count"], ascending=[True, False]
+            )
+            person_month_counts["Rank"] = person_month_counts.groupby("Month")[
+                "Count"
+            ].rank(method="min", ascending=False)
+
+            for person in person_month_counts["Person"].unique():
+                person_data = person_month_counts[
+                    person_month_counts["Person"] == person
+                ]
+                monthly_rank_traces.append(
+                    {
+                        "name": person,
+                        "x": person_data["Month"].tolist(),
+                        "y": person_data["Rank"].tolist(),
+                    }
+                )
 
     return {
         "day_hour_heatmap": {

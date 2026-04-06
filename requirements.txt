@@ -13,4 +13,5 @@ statsmodels
 textblob
 wordcloud
 plotly
+# kaleido v1+ requires Chrome; stick with 0.2.1 which bundles its own renderer
 kaleido==0.2.1

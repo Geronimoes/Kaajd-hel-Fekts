@@ -171,6 +171,25 @@ def _generate_plotly_static_graphs(payloads: dict, output_dir: Path) -> list[str
         fig.write_image(str(output_dir / f))
         generated.append(f)
 
+    # Media: Per-person stacked bar
+    if med.get("per_person_stacked", {}).get("x"):
+        ps = med["per_person_stacked"]
+        fig = go.Figure(
+            data=[
+                go.Bar(name="Media", x=ps["x"], y=ps["media"]),
+                go.Bar(name="Links", x=ps["x"], y=ps["links"]),
+            ]
+        )
+        fig.update_layout(
+            title="Media/Link Messages per Person",
+            barmode="stack",
+            yaxis_title="Number of messages",
+            **layout_opts,
+        )
+        f = "kaajd-media-links-per-person.png"
+        fig.write_image(str(output_dir / f))
+        generated.append(f)
+
     # Media: Monthly trends
     if med.get("monthly_traces"):
         traces = [
@@ -184,6 +203,100 @@ def _generate_plotly_static_graphs(payloads: dict, output_dir: Path) -> list[str
             title="Monthly Media/Link Trends (Group Total)", **layout_opts
         )
         f = "kaajd-media-monthly-trends.png"
+        fig.write_image(str(output_dir / f))
+        generated.append(f)
+
+    # Media: Top domains
+    if med.get("top_domains_bar", {}).get("x"):
+        td = med["top_domains_bar"]
+        fig = go.Figure(data=[go.Bar(x=td["x"], y=td["y"], marker_color="#1f8a70")])
+        fig.update_layout(
+            title="Top Shared Domains",
+            yaxis_title="Number of links",
+            **layout_opts,
+        )
+        f = "kaajd-top-shared-domains.png"
+        fig.write_image(str(output_dir / f))
+        generated.append(f)
+
+    # Response: Distribution (box plot per person, capped at 4h)
+    if res.get("response_time_distribution", {}).get("traces"):
+        traces = [
+            go.Box(name=t["name"], y=t["y"], boxmean="sd", boxpoints=False)
+            for t in res["response_time_distribution"]["traces"]
+        ]
+        fig = go.Figure(data=traces)
+        fig.update_layout(
+            title="Response Time Distribution (minutes, capped at 4h)",
+            yaxis_title="Response time (minutes)",
+            **layout_opts,
+        )
+        f = "kaajd-response-time-distribution.png"
+        fig.write_image(str(output_dir / f))
+        generated.append(f)
+
+    # Response: Conversation starters
+    if res.get("conversation_starters_bar", {}).get("x"):
+        cs = res["conversation_starters_bar"]
+        fig = go.Figure(data=[go.Bar(x=cs["x"], y=cs["y"], marker_color="#2e6f95")])
+        fig.update_layout(
+            title="Conversations Started",
+            yaxis_title="Conversations started",
+            **layout_opts,
+        )
+        f = "kaajd-conversation-starters.png"
+        fig.write_image(str(output_dir / f))
+        generated.append(f)
+
+    # Relationships: Affinity heatmap
+    rel = payloads.get("relationships", {})
+    if rel.get("affinity_heatmap", {}).get("z"):
+        ah = rel["affinity_heatmap"]
+        fig = go.Figure(
+            data=[
+                go.Heatmap(
+                    x=ah["x"],
+                    y=ah["y"],
+                    z=ah["z"],
+                    colorscale=[[0, "white"], [1, "rgb(8,48,107)"]],
+                )
+            ]
+        )
+        fig.update_layout(
+            title="Affinity Scores",
+            xaxis_title="Replied to →",
+            yaxis_title="Replier ↓",
+            margin=dict(l=200, t=52, r=16, b=52),
+            width=1000,
+            height=600,
+        )
+        f = "kaajd-affinity-heatmap.png"
+        fig.write_image(str(output_dir / f))
+        generated.append(f)
+
+    # Relationships: Correlation heatmap
+    if rel.get("correlation_heatmap", {}).get("z"):
+        ch = rel["correlation_heatmap"]
+        fig = go.Figure(
+            data=[
+                go.Heatmap(
+                    x=ch["x"],
+                    y=ch["y"],
+                    z=ch["z"],
+                    colorscale="RdBu",
+                    zmid=0,
+                )
+            ]
+        )
+        fig.update_layout(
+            title="Daily Activity Correlation",
+            xaxis_title="Participant",
+            yaxis_title="Participant",
+            margin=dict(l=200, t=52, r=16, b=52),
+            width=1000,
+            height=600,
+        )
+        f = "kaajd-correlation-heatmap.png"
         fig.write_image(str(output_dir / f))
         generated.append(f)
 

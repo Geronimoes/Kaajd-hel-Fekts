@@ -4,6 +4,26 @@ All notable changes to this project are documented in this file.
 
 ## [Unreleased]
 
+### Added (2026-04-06 session)
+- Added `POST /api/chat/<chat_id>/delete` route; deletes chat from SQLite and removes output directory from disk. The "Delete Analysis" button on the dashboard now works correctly.
+- Added per-item delete (✕) buttons on the Recent Analyses list on the upload page; added "Delete all" button to wipe all stored analyses at once.
+- Added static PNG export for 6 additional charts in `graphs.py`: affinity heatmap, correlation heatmap, conversation starters, top shared domains, response time distribution, and media per person. The ZIP download now contains all 13 charts.
+- Added comprehensive methodology notes beneath every chart in `dashboard.html` explaining how each metric is computed.
+- Added `BOT_PARTICIPANTS` filtering to `_activity_payload` in `charts_payloads.py`: Meta AI is now excluded from message-length distributions, monthly-rank traces, emoji-per-person data, and the person-filter dropdown.
+
+### Changed (2026-04-06 session)
+- Updated `GRAPH_FILENAMES` in `routes.py` to match all 13 generated static PNGs (was 7).
+- Updated Plotly chart layouts in `dashboard.html` to use explicit `height` values (420px desktop, 360px mobile) and `fixedrange: true` on both axes. Prevents "vertical stretch on tap" mobile bug.
+- Updated affinity/correlation heatmaps: left margin explicitly 200px; `nacolor: "lightgray"` added to response heatmap so null cells don't appear as a valid colour.
+- Updated `scripts/dev-check.sh` API validation to write responses to temp files instead of env vars, fixing "Argument list too long" crash for large chats.
+- Updated `requirements.txt` with a comment explaining why kaleido is pinned to 0.2.1.
+
+### Fixed (2026-04-06 session)
+- Fixed Meta AI appearing in the person-filter dropdown on the dashboard.
+- Fixed dev-check.sh step 4 crashing on large chats (env-var size limit exceeded).
+
+---
+
 ### Added
 - Introduced modular app layout under `app/` with `parser.py`, `analyzer.py`, `graphs.py`, `routes.py`, and app factory in `app/__init__.py`.
 - Added new CLI entry point `cli.py` for end-to-end analysis and graph generation.

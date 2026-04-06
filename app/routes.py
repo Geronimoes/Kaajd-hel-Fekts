@@ -45,7 +45,13 @@ GRAPH_FILENAMES = [
     "kaajd-message-length-distribution.png",
     "kaajd-top-emojis.png",
     "kaajd-response-heatmap.png",
+    "kaajd-response-time-distribution.png",
+    "kaajd-conversation-starters.png",
+    "kaajd-affinity-heatmap.png",
+    "kaajd-correlation-heatmap.png",
+    "kaajd-media-links-per-person.png",
     "kaajd-media-monthly-trends.png",
+    "kaajd-top-shared-domains.png",
     "wordcloud.png",
 ]
 
@@ -385,6 +391,28 @@ def chat_dashboard_data(chat_id: int):
             "plotly": plotly_payloads,
         }
     )
+
+
+@main_bp.route("/api/chat/<int:chat_id>/delete", methods=["POST"])
+@auth.login_required
+def delete_chat_route(chat_id: int):
+    context = get_chat_context(chat_id, db_path=current_app.config.get("DATABASE_PATH"))
+    if context is None:
+        return jsonify({"error": "chat_not_found", "chat_id": chat_id}), 404
+
+    output_dir_raw = context.get("chat", {}).get("output_dir", "")
+    deleted_db = delete_chat(chat_id, db_path=current_app.config.get("DATABASE_PATH"))
+
+    # Also remove output files from disk so they don't linger
+    if output_dir_raw:
+        output_dir = Path(output_dir_raw)
+        if output_dir.exists() and output_dir.is_dir():
+            try:
+                shutil.rmtree(output_dir)
+            except OSError:
+                pass  # Best-effort; DB deletion already succeeded
+
+    return jsonify({"success": deleted_db, "chat_id": chat_id})
 
 
 @main_bp.route("/api/chats")

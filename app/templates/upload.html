@@ -32,7 +32,7 @@
             <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center mb-3">
                     <h2 class="h5 mb-0">Recent analyses</h2>
-                    <span class="text-muted small">Latest 10</span>
+                    <button id="delete-all-btn" class="btn btn-sm btn-outline-danger d-none" title="Permanently delete all stored analyses">Delete all</button>
                 </div>
                 <div id="recent-analyses-loading" class="small text-muted">Loading recent analyses...</div>
                 <div id="recent-analyses-error" class="alert alert-warning d-none mb-0" role="alert">
@@ -136,6 +136,28 @@ async function loadRecentAnalyses() {
             return;
         }
 
+        document.getElementById("delete-all-btn").classList.remove("d-none");
+
+        const deleteChat = async (chatId, listItem) => {
+            if (!confirm("Delete this analysis? This cannot be undone.")) return;
+            try {
+                const res = await fetch(`/api/chat/${chatId}/delete`, { method: "POST" });
+                const data = await res.json();
+                if (data.success) {
+                    listItem.remove();
+                    if (!list.querySelector("li")) {
+                        list.classList.add("d-none");
+                        empty.classList.remove("d-none");
+                        document.getElementById("delete-all-btn").classList.add("d-none");
+                    }
+                } else {
+                    alert("Could not delete this analysis.");
+                }
+            } catch {
+                alert("Network error while deleting.");
+            }
+        };
+
         const items = chats.map((chat) => {
             const filename = escapeHtml(chat.source_name || "unknown");
             const messageCount = Number(chat.message_count || 0).toLocaleString();
@@ -146,38 +168,62 @@ async function loadRecentAnalyses() {
                 : "";
             const detailLine = `${messageCount} messages \u00b7 ${language} \u00b7 ${createdAt}`;
 
+            const deleteBtn = `<button class="btn btn-sm btn-outline-danger ms-2 flex-shrink-0 delete-item-btn" data-chat-id="${chat.id}" aria-label="Delete">&#x2715;</button>`;
+
             if (chat.analysis_id) {
                 const analysisId = encodeURIComponent(chat.analysis_id);
                 const href = `/results/${analysisId}?chat_id=${chat.id}`;
                 return `
-                    <li class="list-group-item px-0">
-                        <a href="${href}" class="text-decoration-none d-flex justify-content-between align-items-start gap-2">
-                            <div>
-                                <div class="fw-semibold text-dark">${filename}${warningBadge}</div>
-                                <div class="small text-muted">${detailLine}</div>
-                            </div>
-                            <span class="small">Open</span>
+                    <li class="list-group-item px-0 d-flex align-items-start gap-2">
+                        <a href="${href}" class="text-decoration-none flex-grow-1 min-w-0">
+                            <div class="fw-semibold text-dark">${filename}${warningBadge}</div>
+                            <div class="small text-muted">${detailLine}</div>
                         </a>
+                        ${deleteBtn}
                     </li>
                 `;
             }
 
             return `
-                <li class="list-group-item px-0">
-                    <div class="fw-semibold">${filename}${warningBadge}</div>
-                    <div class="small text-muted">${detailLine}</div>
+                <li class="list-group-item px-0 d-flex align-items-start gap-2">
+                    <div class="flex-grow-1 min-w-0">
+                        <div class="fw-semibold">${filename}${warningBadge}</div>
+                        <div class="small text-muted">${detailLine}</div>
+                    </div>
+                    ${deleteBtn}
                 </li>
             `;
         });
 
         list.innerHTML = items.join("");
         list.classList.remove("d-none");
+
+        // Wire up per-item delete buttons
+        list.querySelectorAll(".delete-item-btn").forEach((btn) => {
+            btn.addEventListener("click", (e) => {
+                e.preventDefault();
+                const li = btn.closest("li");
+                deleteChat(btn.dataset.chatId, li);
+            });
+        });
     } catch (err) {
         error.classList.remove("d-none");
     } finally {
         loading.classList.add("d-none");
     }
 }
+
+document.getElementById("delete-all-btn").addEventListener("click", async () => {
+    const items = document.querySelectorAll("#recent-analyses-list .delete-item-btn");
+    if (!items.length) return;
+    if (!confirm(`Delete all ${items.length} stored analyses? This cannot be undone.`)) return;
+    for (const btn of items) {
+        try {
+            await fetch(`/api/chat/${btn.dataset.chatId}/delete`, { method: "POST" });
+        } catch { /* best-effort */ }
+    }
+    await loadRecentAnalyses();
+});
 
 loadRecentAnalyses();
 </script>
