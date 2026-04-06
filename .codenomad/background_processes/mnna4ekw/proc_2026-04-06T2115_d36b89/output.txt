@@ -1,0 +1,39 @@
+[deprecated] wa-flask.py is kept for compatibility. Preferred production entrypoint is gunicorn wsgi:app.
+ * Tip: There are .env files present. Install python-dotenv to use them.
+ * Serving Flask app 'app'
+ * Debug mode: off
+[31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://46.225.73.55:5000
+[33mPress CTRL+C to quit[0m
+100.114.222.69 - - [06/Apr/2026 21:15:55] code 400, message Bad request version ('\x02h2\x08http/1.1\x00')
+100.114.222.69 - - [06/Apr/2026 21:15:55] "[31m[1m\x16\x03\x01\x06À\x01\x00\x06¼\x03\x03D$ZõHbÐÆ*\x92$Ñ \x11\x9e ¹\x19\x9b\x7f¤»Ô\x1c\x9e`&¼CIöO wNÌ4]\x98ÌÙäë®\x91\x84Tâp®|\x0c#9\x80ñ»ßóT,\x03=9\x91\x00 JJ\x13\x01\x13\x02\x13\x03À+À/À,À0Ì©Ì¨À\x13À\x14\x00\x9c\x00\x9d\x00/\x005\x01\x00\x06Szz\x00\x00\x00\x12\x00\x00þ\x0d\x00Ú\x00\x00\x01\x00\x01\x05\x00 ´\x0f`\x84j\x99*ü\x19Ã¾\x7f(6\x00\x06]C\x93\x89m°n\x7f0(1G\x88-Þ\x7f\x00°\x8e\x17\x03Åýî\x9f+fîx¯¬\x0e\x15]\x03õÅ\x92zUÃ\x1cR¡Ô\x84"e43\x1cêâJ\x8cÞÈ]£ÿ\x0bK\x03ËU¤])ë\x9bP\x18ÎÖ·Gÿ\x84O\x11\x17nÌU" ÁY\x05-tæ2õ\x048l\x95ñ\x11\x109\x9f6ñ¼1M¬A8b"øéí\x15±ó};\x83½M\x01B\x8c\x98É\x1dJUÈÚ¶\x0c×N®ò½µIH\x12éPçi\x9fË¢\x92ß\x05¦NÐDÂ¾¹\x12n\x86\x1aô2+Þu;\x0f))\x97\x18\x89'\x0cìrQæ\x82x°¼ïû©Ó\x8d]\x00\x10\x00\x0e\x00\x0c\x02h2\x08http/1.1\x00[0m" 400 -
+100.114.222.69 - - [06/Apr/2026 21:15:55] code 400, message Bad request version ('\x9cÂ\x88¼\x07-\x94\x84\x86ÀýZ*\x98+ö\x00')
+100.114.222.69 - - [06/Apr/2026 21:15:55] "[31m[1m\x16\x03\x01\x06à\x01\x00\x06Ü\x03\x03\x8a\x0dð\x0e\x08=¸\x7f³X­Þ]ã\x98NIj±×+\x1dFq\x81Éõü<ÞÛ\x8e \x93µñ\x8c\x1c`\x89Ë\x96\x83)\x14\x7fN\x02 \x9cÂ\x88¼\x07-\x94\x84\x86ÀýZ*\x98+ö\x00 [0m" 400 -
+100.114.222.69 - - [06/Apr/2026 21:15:55] code 400, message Bad request syntax ('\x16\x03\x01\x06À\x01\x00\x06¼\x03\x03Ï')
+100.114.222.69 - - [06/Apr/2026 21:15:55] "[31m[1m\x16\x03\x01\x06À\x01\x00\x06¼\x03\x03Ï[0m" 400 -
+100.114.222.69 - - [06/Apr/2026 21:15:55] code 400, message Bad request version ('ºº\x13\x01\x13\x02\x13\x03À+À/À,À0Ì©Ì¨À\x13À\x14\x00\x9c\x00\x9d\x00/\x005\x01\x00\x06s')
+100.114.222.69 - - [06/Apr/2026 21:15:55] "[31m[1m\x16\x03\x01\x06à\x01\x00\x06Ü\x03\x03¿Zï¥f\x84¡fÐqS·M>ý\x90\x09\x83zz\x0fG£+Y\x00Ø»¾\x85M« [Õè%O\x1f-¨\x88þ¨ÃúU\x1a\x13a°OiÌ?\x9c_5\x96+áýÊ\x80\x89\x00 ºº\x13\x01\x13\x02\x13\x03À+À/À,À0Ì©Ì¨À\x13À\x14\x00\x9c\x00\x9d\x00/\x005\x01\x00\x06s[0m" 400 -
+100.114.222.69 - - [06/Apr/2026 21:16:04] "GET / HTTP/1.1" 200 -
+100.114.222.69 - - [06/Apr/2026 21:16:04] "GET /static/css/app.css HTTP/1.1" 200 -
+100.114.222.69 - - [06/Apr/2026 21:16:05] "GET /api/chats?limit=10 HTTP/1.1" 200 -
+100.114.222.69 - - [06/Apr/2026 21:16:05] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+100.114.222.69 - - [06/Apr/2026 21:17:05] "[32mGET /results/chat2?chat_id=1 HTTP/1.1[0m" 302 -
+100.114.222.69 - - [06/Apr/2026 21:17:05] "GET / HTTP/1.1" 200 -
+100.114.222.69 - - [06/Apr/2026 21:17:05] "[36mGET /static/css/app.css HTTP/1.1[0m" 304 -
+100.114.222.69 - - [06/Apr/2026 21:17:05] "GET /api/chats?limit=10 HTTP/1.1" 200 -
+100.114.222.69 - - [06/Apr/2026 21:17:10] "[32mGET /results/chat2?chat_id=1 HTTP/1.1[0m" 302 -
+100.114.222.69 - - [06/Apr/2026 21:17:10] "GET / HTTP/1.1" 200 -
+100.114.222.69 - - [06/Apr/2026 21:17:10] "[36mGET /static/css/app.css HTTP/1.1[0m" 304 -
+100.114.222.69 - - [06/Apr/2026 21:17:11] "GET /api/chats?limit=10 HTTP/1.1" 200 -
+100.76.35.101 - - [06/Apr/2026 21:17:40] "GET /results/20260406182204-WhatsApp-chat_met_Kaajd_en_de_gaank?chat_id=1 HTTP/1.1" 200 -
+100.76.35.101 - - [06/Apr/2026 21:17:40] "GET /static/css/app.css HTTP/1.1" 200 -
+100.76.35.101 - - [06/Apr/2026 21:17:40] "GET /static/uploads/20260406182204-WhatsApp-chat_met_Kaajd_en_de_gaank/output/wordcloud.png HTTP/1.1" 200 -
+100.76.35.101 - - [06/Apr/2026 21:17:47] "GET /api/chat/1/dashboard-data?start_date=2018-11-24&end_date=2026-04-05 HTTP/1.1" 200 -
+100.76.35.101 - - [06/Apr/2026 21:17:49] "[33mPOST /api/chat/1/delete HTTP/1.1[0m" 404 -
+100.76.35.101 - - [06/Apr/2026 21:17:52] "GET /results/20260406182204-WhatsApp-chat_met_Kaajd_en_de_gaank?chat_id=1 HTTP/1.1" 200 -
+100.76.35.101 - - [06/Apr/2026 21:17:53] "[36mGET /static/css/app.css HTTP/1.1[0m" 304 -
+100.76.35.101 - - [06/Apr/2026 21:17:53] "[36mGET /static/uploads/20260406182204-WhatsApp-chat_met_Kaajd_en_de_gaank/output/wordcloud.png HTTP/1.1[0m" 304 -
+100.76.35.101 - - [06/Apr/2026 21:17:59] "GET /api/chat/1/dashboard-data?start_date=2018-11-24&end_date=2026-04-05 HTTP/1.1" 200 -
+100.76.35.101 - - [06/Apr/2026 21:18:08] "[33mPOST /api/chat/1/delete HTTP/1.1[0m" 404 -
