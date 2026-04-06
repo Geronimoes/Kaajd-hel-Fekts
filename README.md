@@ -6,11 +6,11 @@ Kaajd is a WhatsApp chat export analyzer. It parses `.txt` exports, generates pe
 
 The project is in an active refactor:
 
-- Phase 1 underway: code moved into `app/` modules and Flask app factory pattern.
-- Legacy scripts (`wa-stats.py`, `wa-graphs.py`, `wa-flask.py`) now act as compatibility wrappers.
-- New parser improvements from Phase 2 have started (multi-format parsing, system/media/link flags, language detection fallback).
-- SQLite persistence layer is now in place for chats, messages, and computed stats.
-- Cache-aware analysis now reuses persisted results for identical chat files (by content hash).
+- Phase 1/2 core migration is completed in practice (modular app, parser/data layer, SQLite, cache reuse).
+- Phase 3 analyzers are implemented: response patterns, media/links, topics, and relationships.
+- Phase 4 interactive dashboard is live with Plotly tabs, filters, loading/error states, and browser cache fallback.
+- Legacy scripts (`wa-stats.py`, `wa-graphs.py`, `wa-flask.py`) remain as deprecated compatibility wrappers.
+- Phase 5 deployment baseline is in place (Docker, gunicorn, env-driven auth, health checks).
 
 ## Project structure
 
@@ -62,6 +62,8 @@ Run the one-shot local verification script:
 ```
 
 This runs parser smoke tests, full CLI analysis on `data/chat.txt`, cache reuse checks, and API endpoint sanity checks.
+
+For next-session continuity, see `SESSION_HANDOFF.md`.
 
 If you use the word cloud and NLTK stopwords for the first time:
 

@@ -4,6 +4,15 @@
 
 Kaajd is a WhatsApp chat analyzer built for fun — parse a chat export, get stats and graphs. Currently ~350 lines of Python across 4 scripts with basic Flask web UI. The goal: make it significantly more capable (new analyses, interactive dashboard, multilingual) and hostable (Docker, auth), while preparing the architecture for future LLM integration.
 
+## Progress snapshot (working state)
+
+- **Phase 1:** largely completed; compatibility wrappers still present as deprecated shims.
+- **Phase 2:** completed for practical use (multi-format parser, enrichment, SQLite, cache reuse).
+- **Phase 3:** major modules implemented (`response_patterns`, `media_links`, `topics`, `relationships`).
+- **Phase 4:** interactive Plotly dashboard and API payload flow implemented; polish ongoing.
+- **Phase 5:** Docker/gunicorn/auth baseline implemented; deployment hardening docs ongoing.
+- **Phase 6:** structure in place (context/query APIs, config placeholders, integration docs); runtime LLM features intentionally not implemented.
+
 ---
 
 ## Phase 1: Restructure and Consolidate

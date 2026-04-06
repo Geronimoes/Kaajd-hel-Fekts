@@ -36,6 +36,7 @@ All notable changes to this project are documented in this file.
 - Added Flask JSON endpoint `GET /api/chat/<chat_id>/dashboard-data` with combined analytics + chart payloads.
 - Added DB lookup helper `get_chat_by_output_dir(...)` for dashboard context recovery.
 - Added `.env.example` for Docker/runtime configuration bootstrap.
+- Added `SESSION_HANDOFF.md` with explicit resume instructions for future sessions.
 - Added LLM integration planning document: `docs/llm-integration.md`.
 
 ### Changed
@@ -79,6 +80,8 @@ All notable changes to this project are documented in this file.
 - Updated legacy wrapper scripts to print deprecation notices and point to modern entrypoints.
 - Updated Docker deployment files (`Dockerfile`, `docker-compose.yml`) with health checks and `.env`-driven runtime settings.
 - Updated `README.md` with mobile-over-Tailscale deployment guidance.
+- Updated `AGENTS.md` to match the current modular architecture, APIs, and workflows.
+- Updated `PLAN.md` with a current progress snapshot.
 
 ### Ops
 - Extracted project-root WhatsApp test archive into `data/chat.txt`.
