@@ -19,9 +19,16 @@ def main() -> None:
         default=None,
         help="Optional SQLite database path (defaults to KAAJD_DB_PATH or ./kaajd.sqlite3)",
     )
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force re-analysis by ignoring the cached database version",
+    )
     args = parser.parse_args()
 
-    analysis = analyze_chat(args.file_path, db_path=args.db_path)
+    analysis = analyze_chat(
+        args.file_path, db_path=args.db_path, reuse_cached=not args.force
+    )
     generate_graphs(analysis["raw_data_df"], analysis["output_dir"])
     print(analysis["chat_stats_df"].to_string(index=False))
 

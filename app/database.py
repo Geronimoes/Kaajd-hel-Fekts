@@ -111,6 +111,16 @@ def get_chat_by_output_dir(
     return dict(row) if row else None
 
 
+def delete_chat(chat_id: int, db_path: str | Path | None = None) -> bool:
+    init_db(db_path)
+    with _connect(db_path) as connection:
+        connection.execute("DELETE FROM messages WHERE chat_id = ?", (chat_id,))
+        connection.execute("DELETE FROM stats WHERE chat_id = ?", (chat_id,))
+        cursor = connection.execute("DELETE FROM chats WHERE id = ?", (chat_id,))
+        connection.commit()
+        return cursor.rowcount > 0
+
+
 def load_chat_frames(
     chat_id: int, db_path: str | Path | None = None
 ) -> tuple[pd.DataFrame, pd.DataFrame]:

@@ -32,6 +32,7 @@ from .database import (
     list_recent_chats,
     load_chat_frames,
     query_messages,
+    delete_chat,
 )
 from .graphs import generate_graphs
 

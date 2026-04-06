@@ -79,7 +79,8 @@ def analyze_chat(
             if output_dir is not None:
                 resolved_output_path = Path(output_dir)
             else:
-                resolved_output_path = Path(cached_chat["output_dir"])
+                # Always resolve based on the current requested file_path so we don't dump to an old path
+                resolved_output_path = source_path.parent / source_path.stem / "output"
 
             resolved_output_path.mkdir(parents=True, exist_ok=True)
             raw_data_csv_path, html_path, json_path, chat_stats_json = (
