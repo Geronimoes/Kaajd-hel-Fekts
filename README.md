@@ -105,6 +105,8 @@ Then open:
 
 - `http://localhost:5000`
 
+On the upload page you can also use **Try with demo data**, which analyzes the bundled `data/sample-chat.txt` file through `GET /demo` and redirects to results.
+
 ### Legacy script compatibility
 
 These still work and route into the refactored code:
@@ -139,7 +141,7 @@ Default database path:
 
 - `./kaajd.sqlite3`
 
-Note: local DB and chat test data paths are gitignored by default.
+Note: local DB and chat test data paths are gitignored by default, except the bundled `data/sample-chat.txt` demo dataset.
 
 Override with:
 
@@ -249,6 +251,15 @@ Returns:
 
 The `/results/<analysis_id>` page now uses this endpoint to render an interactive tabbed dashboard with person and date-range filters, while keeping a static-graph fallback tab.
 The dashboard now includes loading and error states, and caches the latest dashboard payload in browser session storage for faster reloads.
+Interactive charts include one-click PNG download buttons, and the Static Graphs tab now exposes explicit `Download PNG` links for each image.
+
+Recent analyses endpoint:
+
+```text
+GET /api/chats
+```
+
+Returns recently stored analyses from SQLite (default limit 10), including source filename, timestamps, message count, language, and derived `analysis_id` values suitable for reopening existing sessions.
 
 ## Deployment (Docker)
 

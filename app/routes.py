@@ -26,6 +26,7 @@ from .charts_payloads import build_plotly_payloads
 from .database import (
     get_chat_by_output_dir,
     get_chat_context,
+    list_recent_chats,
     load_chat_frames,
     query_messages,
 )
@@ -77,7 +78,41 @@ def upload_file():
             )
         )
 
-    return render_template("upload.html")
+    error_message = request.args.get("error")
+    return render_template("upload.html", error=error_message)
+
+
+@main_bp.route("/demo")
+@auth.login_required
+def demo_analysis():
+    sample_chat_path = Path(current_app.root_path).parent / "data" / "sample-chat.txt"
+    demo_output_dir = Path(current_app.config["UPLOAD_DIR"]) / "sample-chat" / "output"
+    if not sample_chat_path.exists():
+        return redirect(
+            url_for(
+                "main.upload_file",
+                error="Demo chat data is not available on this server.",
+            )
+        )
+
+    analysis_result = analyze_chat(
+        file_path=str(sample_chat_path),
+        output_dir=str(demo_output_dir),
+        db_path=current_app.config.get("DATABASE_PATH"),
+    )
+    generate_graphs(analysis_result["raw_data_df"], analysis_result["output_dir"])
+
+    analysis_id = _extract_analysis_id(Path(analysis_result["output_dir"]))
+    if not analysis_id:
+        analysis_id = sample_chat_path.stem
+
+    return redirect(
+        url_for(
+            "main.dashboard",
+            analysis_id=analysis_id,
+            chat_id=analysis_result.get("chat_id"),
+        )
+    )
 
 
 @main_bp.route("/results/<analysis_id>")
@@ -290,6 +325,42 @@ def chat_dashboard_data(chat_id: int):
     )
 
 
+@main_bp.route("/api/chats")
+@auth.login_required
+def chats_list():
+    try:
+        limit = int(request.args.get("limit", 10))
+    except ValueError:
+        return jsonify({"error": "invalid_limit"}), 400
+
+    chats = list_recent_chats(
+        limit=max(1, min(limit, 50)),
+        db_path=current_app.config.get("DATABASE_PATH"),
+    )
+
+    response_rows = []
+    for row in chats:
+        output_dir_raw = str(row.get("output_dir") or "").strip()
+        output_dir = Path(output_dir_raw) if output_dir_raw else None
+        analysis_id = _extract_analysis_id(output_dir)
+        response_rows.append(
+            {
+                "id": int(row["id"]),
+                "source_name": row.get("source_name") or "unknown",
+                "parser_format": row.get("parser_format") or "unknown",
+                "detected_language": row.get("detected_language") or "unknown",
+                "message_count": int(row.get("message_count") or 0),
+                "created_at": row.get("created_at"),
+                "updated_at": row.get("updated_at"),
+                "output_dir": output_dir_raw,
+                "analysis_id": analysis_id,
+                "static_files_missing": output_dir is None or not output_dir.exists(),
+            }
+        )
+
+    return jsonify({"count": len(response_rows), "chats": response_rows})
+
+
 def _parse_bool_query_param(value: str | None) -> bool | None:
     if value is None:
         return None
@@ -329,3 +400,20 @@ def _filter_raw_data_df(
         filtered = filtered[filtered["DateObj"] <= end]
 
     return filtered.drop(columns=["DateObj"], errors="ignore")
+
+
+def _extract_analysis_id(output_dir: Path | None) -> str | None:
+    if output_dir is None:
+        return None
+
+    try:
+        output_parts = output_dir.resolve().parts
+    except OSError:
+        output_parts = output_dir.parts
+
+    if not output_parts:
+        return None
+
+    if output_parts[-1] == "output" and len(output_parts) >= 2:
+        return output_parts[-2]
+    return output_dir.name or None

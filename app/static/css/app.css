@@ -30,6 +30,20 @@ body {
     border-radius: 0.75rem;
     background: #ffffff;
     padding: 0.4rem;
+    position: relative;
+}
+
+.chart-download-btn {
+    position: absolute;
+    top: 0.45rem;
+    right: 0.45rem;
+    z-index: 6;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    line-height: 1;
+    font-size: 1.1rem;
+    box-shadow: 0 2px 8px rgba(31, 42, 58, 0.18);
 }
 
 .chart-loading {
@@ -55,6 +69,29 @@ table {
 }
 
 @media (max-width: 768px) {
+    #dashboardTabs {
+        overflow-x: auto;
+        overflow-y: hidden;
+        flex-wrap: nowrap;
+        white-space: nowrap;
+        -webkit-overflow-scrolling: touch;
+        scrollbar-width: thin;
+    }
+
+    #dashboardTabs .nav-item {
+        flex: 0 0 auto;
+    }
+
+    #dashboardTabs .nav-link {
+        min-height: 44px;
+        padding: 10px 16px;
+    }
+
+    #applyFilters {
+        min-height: 44px;
+        width: 100%;
+    }
+
     .chart-box {
         min-height: 280px;
     }

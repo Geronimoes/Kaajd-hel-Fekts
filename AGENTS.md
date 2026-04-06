@@ -27,6 +27,10 @@ Web templates:
 - `app/templates/upload.html`
 - `app/templates/dashboard.html` (interactive tabbed dashboard)
 
+Bundled demo data:
+
+- `data/sample-chat.txt` (used by `GET /demo` for one-click onboarding)
+
 ## Main entry points
 
 Preferred:
@@ -68,6 +72,7 @@ This verifies parser smoke tests, CLI run, cache reuse, and API endpoints.
 - `GET /api/chat/<chat_id>/topics`
 - `GET /api/chat/<chat_id>/relationships`
 - `GET /api/chat/<chat_id>/dashboard-data`
+- `GET /api/chats`
 
 ## Deployment
 

@@ -160,7 +160,8 @@ cython_debug/
 #.idea/
 
 # Kaajd local data artifacts
-/data/
+/data/*
+!/data/sample-chat.txt
 /kaajd.sqlite3
 /app/static/uploads/*
 !/app/static/uploads/.gitkeep

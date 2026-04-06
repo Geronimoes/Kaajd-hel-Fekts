@@ -1,0 +1,113 @@
+02-01-2025 08:12 - Alex: Goedemorgen team, coffee check?
+02-01-2025 08:13 - Sam: Always. Ik ben al aan mijn tweede kop.
+02-01-2025 08:14 - Priya: Morning! Standup om 09:30 toch?
+02-01-2025 08:15 - Noor: Yep, en neem de metrics mee.
+02-01-2025 09:31 - Alex: Start standup in 2 min.
+02-01-2025 09:47 - Priya: Notes staan hier: https://example.com/notes/0102
+02-01-2025 10:05 - Sam: Build is green again ✅
+02-01-2025 10:08 - Noor: Nice, die flaky test was de oorzaak.
+02-01-2025 12:22 - Alex: Lunch walk anyone?
+02-01-2025 12:24 - Priya: Ik pas, call met klant.
+02-01-2025 12:25 - Sam: Ik ga mee 🚶
+02-01-2025 18:10 - Noor: <Media omitted>
+03-01-2025 07:58 - Alex: Vroege vogel update: deploy om 10:00.
+03-01-2025 08:01 - Sam: Ik monitor logs na deploy.
+03-01-2025 08:03 - Priya: Ik pak support kanaal.
+03-01-2025 10:02 - Alex: Deploy gestart.
+03-01-2025 10:09 - Sam: Error rate blijft laag 👍
+03-01-2025 10:15 - Noor: Dashboard screenshot: <Media omitted>
+03-01-2025 11:40 - Priya: Klantfeedback: "sneller dan vorige week" 🎉
+03-01-2025 15:21 - Alex: Weekend plannen?
+03-01-2025 15:24 - Sam: Zaterdag hike?
+03-01-2025 15:27 - Noor: Ja! Route idee: www.hike-example.org/route-7
+04-01-2025 11:03 - Priya: Wie neemt snacks mee?
+04-01-2025 11:05 - Alex: Ik regel fruit.
+04-01-2025 11:06 - Sam: Ik neem koffie in thermos.
+04-01-2025 11:07 - Noor: Ik bak koekjes 🍪
+05-01-2025 20:11 - Alex: Terug thuis, was topdag.
+05-01-2025 20:13 - Priya: Mijn benen voelen die klim nog steeds 😅
+05-01-2025 20:17 - Sam: Foto dump incoming.
+05-01-2025 20:18 - Sam: <Media omitted>
+08-01-2025 09:10 - Noor: Weekly goals thread?
+08-01-2025 09:12 - Alex: 1) latency omlaag 2) docs bijwerken
+08-01-2025 09:14 - Priya: 3) onboarding flow versimpelen
+08-01-2025 09:16 - Sam: 4) alerting thresholds tunen
+09-01-2025 14:00 - Priya: Survey link voor testers: https://forms.example.net/team-survey
+09-01-2025 14:03 - Alex: Ingevuld.
+09-01-2025 14:04 - Noor: Done.
+09-01-2025 14:06 - Sam: Klaar.
+12-01-2025 22:31 - Sam: Wie is nog wakker?
+12-01-2025 22:33 - Alex: Nog even bugfixen...
+12-01-2025 22:35 - Priya: Night shift club 🌙
+12-01-2025 22:38 - Noor: Niet te laat maken hoor.
+18-01-2025 10:02 - Priya: Nieuwe feature live op staging.
+18-01-2025 10:07 - Alex: Ik test mobiel nu.
+18-01-2025 10:09 - Sam: Android ok, iOS nog checken.
+18-01-2025 10:11 - Noor: iOS ziet er goed uit hier.
+24-01-2025 16:45 - Alex: Reminder: retrospective morgen 11:00.
+24-01-2025 16:47 - Priya: Wat ging deze sprint het best?
+24-01-2025 16:49 - Sam: Minder incidenten, betere handoff.
+24-01-2025 16:53 - Noor: En eindelijk minder meeting-overload.
+02-02-2025 09:20 - Alex: Februari kick-off 🚀
+02-02-2025 09:21 - Sam: Doel: p95 response onder 350ms.
+02-02-2025 09:23 - Priya: En support backlog halveren.
+02-02-2025 09:24 - Noor: Ik maak een tracking sheet.
+03-02-2025 13:00 - Priya: Shared doc: https://docs.example.com/feb-plan
+03-02-2025 13:04 - Alex: Ziet er strak uit.
+03-02-2025 13:08 - Sam: Ik voeg metric definities toe.
+03-02-2025 13:11 - Noor: Top, dan hebben we 1 bron van waarheid.
+07-02-2025 18:44 - Sam: Kleine outage, nu opgelost.
+07-02-2025 18:45 - Alex: Root cause?
+07-02-2025 18:47 - Sam: Expired token in third-party API.
+07-02-2025 18:50 - Priya: Postmortem morgen?
+07-02-2025 18:52 - Noor: Ik plan hem in.
+14-02-2025 08:30 - Priya: Happy deploy day 💘
+14-02-2025 08:31 - Alex: Alleen als tests passeren 😂
+14-02-2025 08:34 - Sam: CI zegt ja.
+14-02-2025 08:36 - Noor: Ship it.
+21-02-2025 17:12 - Alex: Team dinner volgende week?
+21-02-2025 17:15 - Priya: Ja graag, vrijdag?
+21-02-2025 17:16 - Sam: Works for me.
+21-02-2025 17:18 - Noor: Ik reserveer iets.
+03-03-2025 09:02 - Noor: Maandstart: wat willen we leren deze maand?
+03-03-2025 09:05 - Alex: Meer user interviews.
+03-03-2025 09:07 - Priya: Ik wil betere release notes discipline.
+03-03-2025 09:11 - Sam: En minder ad-hoc fixes op vrijdag.
+05-03-2025 11:27 - Priya: Vraagje: kunnen we grafieken exporteren?
+05-03-2025 11:29 - Alex: Goede feature request.
+05-03-2025 11:30 - Sam: +1, vooral voor presentaties.
+05-03-2025 11:35 - Noor: Laten we het op de roadmap zetten.
+09-03-2025 21:55 - Sam: Late deploy, fingers crossed.
+09-03-2025 22:02 - Alex: Monitoring kijkt stabiel.
+09-03-2025 22:08 - Priya: User reports ook rustig.
+09-03-2025 22:09 - Noor: Nice work team.
+15-03-2025 10:14 - Alex: <Media omitted>
+15-03-2025 10:17 - Priya: Die grafiek ziet er eindelijk leesbaar uit!
+15-03-2025 10:20 - Sam: Contrast en labels helpen veel.
+15-03-2025 10:22 - Noor: Mobile view ook ok nu.
+20-03-2025 13:40 - Priya: Kunnen we testdata delen met demo accounts?
+20-03-2025 13:42 - Sam: Ja, synthetic dataset maken.
+20-03-2025 13:43 - Alex: Doe maar 4 personen + links + emoji.
+20-03-2025 13:45 - Noor: Ik maak een sample-chat file.
+27-03-2025 16:18 - Alex: kwartaal wrap-up call in 10 min.
+27-03-2025 16:19 - Priya: ik ben er.
+27-03-2025 16:20 - Sam: onderweg.
+27-03-2025 16:21 - Noor: join nu.
+31-03-2025 23:10 - Sam: End-of-quarter cleanup done.
+31-03-2025 23:12 - Alex: Legends.
+31-03-2025 23:13 - Priya: Slaap lekker allemaal.
+31-03-2025 23:14 - Noor: Tot morgen 👋
+WhatsApp end-to-end encryption info changed. Tap for more info.
+01-04-2025 08:01 - Alex: New month, new experiments.
+01-04-2025 08:02 - Priya: Geen aprilgrappen in prod aub 😄
+01-04-2025 08:03 - Sam: Te laat.
+01-04-2025 08:04 - Noor: 😱
+01-04-2025 08:05 - Sam: grapje.
+04-04-2025 12:22 - Priya: Demo rehearsals om 15:00.
+04-04-2025 12:24 - Alex: Ik prep de intro slides.
+04-04-2025 12:26 - Sam: Ik neem live metrics.
+04-04-2025 12:27 - Noor: Ik doe Q&A.
+06-04-2025 09:45 - Alex: Final check: links, media, topics allemaal zichtbaar?
+06-04-2025 09:47 - Priya: Ja, plus relaties tab.
+06-04-2025 09:48 - Sam: API responses zien er goed uit.
+06-04-2025 09:49 - Noor: Klaar voor demo 🎬

@@ -17,9 +17,29 @@
                 <label for="file" class="form-label">Chat export file</label>
                 <input type="file" id="file" name="file" class="form-control" accept=".txt" required>
             </div>
-            <button type="submit" class="btn btn-primary">Analyze chat</button>
+            <div class="d-flex flex-wrap gap-2">
+                <button type="submit" class="btn btn-primary">Analyze chat</button>
+                <a href="{{ url_for('main.demo_analysis') }}" class="btn btn-outline-secondary">Try with demo data</a>
+            </div>
             <div id="loading" class="small text-muted mt-3 d-none">Processing file and generating graphs...</div>
         </form>
+
+        <section class="card shadow-sm mt-4">
+            <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h2 class="h5 mb-0">Recent analyses</h2>
+                    <span class="text-muted small">Latest 10</span>
+                </div>
+                <div id="recent-analyses-loading" class="small text-muted">Loading recent analyses...</div>
+                <div id="recent-analyses-error" class="alert alert-warning d-none mb-0" role="alert">
+                    Could not load recent analyses right now.
+                </div>
+                <ul id="recent-analyses-list" class="list-group list-group-flush d-none"></ul>
+                <p id="recent-analyses-empty" class="small text-muted mb-0 d-none">
+                    No previous analyses yet.
+                </p>
+            </div>
+        </section>
     </div>
 </div>
 {% endblock %}
@@ -29,5 +49,92 @@
 document.getElementById("upload-form").addEventListener("submit", function () {
     document.getElementById("loading").classList.remove("d-none");
 });
+
+function formatDateTime(isoString) {
+    if (!isoString) {
+        return "Unknown date";
+    }
+    const date = new Date(isoString);
+    if (Number.isNaN(date.getTime())) {
+        return isoString;
+    }
+    return date.toLocaleString();
+}
+
+function escapeHtml(value) {
+    return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#39;");
+}
+
+async function loadRecentAnalyses() {
+    const loading = document.getElementById("recent-analyses-loading");
+    const error = document.getElementById("recent-analyses-error");
+    const list = document.getElementById("recent-analyses-list");
+    const empty = document.getElementById("recent-analyses-empty");
+
+    try {
+        const response = await fetch("/api/chats?limit=10", {
+            headers: { "Accept": "application/json" }
+        });
+        if (!response.ok) {
+            throw new Error("Failed to load chats");
+        }
+
+        const payload = await response.json();
+        const chats = Array.isArray(payload.chats) ? payload.chats : [];
+
+        if (!chats.length) {
+            empty.classList.remove("d-none");
+            return;
+        }
+
+        const items = chats.map((chat) => {
+            const filename = escapeHtml(chat.source_name || "unknown");
+            const messageCount = Number(chat.message_count || 0).toLocaleString();
+            const language = escapeHtml(chat.detected_language || "unknown");
+            const createdAt = escapeHtml(formatDateTime(chat.created_at));
+            const warningBadge = chat.static_files_missing
+                ? '<span class="badge text-bg-warning ms-2">static files missing</span>'
+                : "";
+            const detailLine = `${messageCount} messages \u00b7 ${language} \u00b7 ${createdAt}`;
+
+            if (chat.analysis_id) {
+                const analysisId = encodeURIComponent(chat.analysis_id);
+                const href = `/results/${analysisId}?chat_id=${chat.id}`;
+                return `
+                    <li class="list-group-item px-0">
+                        <a href="${href}" class="text-decoration-none d-flex justify-content-between align-items-start gap-2">
+                            <div>
+                                <div class="fw-semibold text-dark">${filename}${warningBadge}</div>
+                                <div class="small text-muted">${detailLine}</div>
+                            </div>
+                            <span class="small">Open</span>
+                        </a>
+                    </li>
+                `;
+            }
+
+            return `
+                <li class="list-group-item px-0">
+                    <div class="fw-semibold">${filename}${warningBadge}</div>
+                    <div class="small text-muted">${detailLine}</div>
+                </li>
+            `;
+        });
+
+        list.innerHTML = items.join("");
+        list.classList.remove("d-none");
+    } catch (err) {
+        error.classList.remove("d-none");
+    } finally {
+        loading.classList.add("d-none");
+    }
+}
+
+loadRecentAnalyses();
 </script>
 {% endblock %}

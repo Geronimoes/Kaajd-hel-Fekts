@@ -38,6 +38,10 @@ All notable changes to this project are documented in this file.
 - Added `.env.example` for Docker/runtime configuration bootstrap.
 - Added `SESSION_HANDOFF.md` with explicit resume instructions for future sessions.
 - Added LLM integration planning document: `docs/llm-integration.md`.
+- Added Flask JSON endpoint `GET /api/chats` to list recent analyses from SQLite.
+- Added bundled synthetic demo dataset at `data/sample-chat.txt`.
+- Added authenticated demo analysis route `GET /demo` for one-click sample run.
+- Added per-chart interactive PNG export controls for Plotly charts on the dashboard.
 
 ### Changed
 - Refactored web flow to call Python functions directly instead of using `subprocess.run()`.
@@ -82,6 +86,13 @@ All notable changes to this project are documented in this file.
 - Updated `README.md` with mobile-over-Tailscale deployment guidance.
 - Updated `AGENTS.md` to match the current modular architecture, APIs, and workflows.
 - Updated `PLAN.md` with a current progress snapshot.
+- Updated `app/templates/upload.html` to render a Recent analyses list sourced from `/api/chats`, including static output-missing warning badges.
+- Updated `app/database.py` with `list_recent_chats(...)` helper for recent session retrieval.
+- Updated `README.md` and `AGENTS.md` to document the new `GET /api/chats` endpoint.
+- Updated upload form UI with a `Try with demo data` shortcut button.
+- Updated `app/templates/dashboard.html` to include explicit static-graph PNG download links.
+- Updated dashboard cache restoration flow to call `inferDateBounds()` (fixes stale method typo during cached loads).
+- Updated `app/static/css/app.css` with mobile tab overflow/touch-target improvements and chart download button styling.
 
 ### Ops
 - Extracted project-root WhatsApp test archive into `data/chat.txt`.

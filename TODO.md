@@ -40,3 +40,7 @@
 - [x] Add deprecation warnings to legacy wrapper scripts (`wa-stats.py`, `wa-stats-flask.py`, `wa-graphs.py`, `wa-flask.py`).
 - [x] Update Docker deployment config to use `.env`-driven settings and health checks.
 - [x] Add mobile-over-Tailscale deployment guidance to README.
+- [x] Add recent-analysis session loading on upload page via new `GET /api/chats` endpoint, including "static files missing" warnings.
+- [x] Add bundled demo chat flow (`data/sample-chat.txt` + `/demo`) with upload-page shortcut for quick onboarding.
+- [x] Add per-chart PNG downloads for interactive Plotly charts plus explicit PNG download links in the Static Graphs tab.
+- [x] Improve mobile dashboard tab UX with horizontal tab scrolling and 44px touch targets for tabs/filter apply button.

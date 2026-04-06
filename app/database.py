@@ -268,6 +268,32 @@ def get_chat_context(
     }
 
 
+def list_recent_chats(
+    *, limit: int = 10, db_path: str | Path | None = None
+) -> list[dict[str, Any]]:
+    init_db(db_path)
+    with _connect(db_path) as connection:
+        rows = connection.execute(
+            """
+            SELECT
+                id,
+                source_name,
+                parser_format,
+                detected_language,
+                output_dir,
+                message_count,
+                created_at,
+                updated_at
+            FROM chats
+            ORDER BY created_at DESC
+            LIMIT ?
+            """,
+            (max(1, int(limit)),),
+        ).fetchall()
+
+    return [dict(row) for row in rows]
+
+
 def store_analysis_result(
     *,
     file_path: str | Path,

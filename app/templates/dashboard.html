@@ -83,6 +83,10 @@
             <div class="row g-3">
                 {% for image in graph_filenames %}
                 <div class="col-md-6">
+                    <div class="d-flex justify-content-between align-items-center mb-1">
+                        <span class="small text-muted">{{ image }}</span>
+                        <a href="{{ url_for('static', filename='uploads/' + analysis_id + '/output/' + image) }}" download class="small">Download PNG</a>
+                    </div>
                     <a href="{{ url_for('static', filename='uploads/' + analysis_id + '/output/' + image) }}" data-lightbox="gallery" data-title="{{ image }}">
                         <img src="{{ url_for('static', filename='uploads/' + analysis_id + '/output/' + image) }}" alt="{{ image }}" class="img-fluid rounded border graph-preview">
                     </a>
@@ -171,6 +175,32 @@
         if (el) {
             el.innerHTML = `<div class="alert alert-danger m-2">${message}</div>`;
         }
+    };
+
+    const addDownloadButton = (divId, filename) => {
+        const chartDiv = document.getElementById(divId);
+        if (!chartDiv || !filename) {
+            return;
+        }
+        chartDiv.classList.add("chart-with-download");
+        chartDiv.querySelectorAll(".chart-download-btn").forEach((btn) => btn.remove());
+
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "btn btn-sm btn-light chart-download-btn";
+        button.setAttribute("aria-label", `Download ${filename} chart as PNG`);
+        button.title = "Download chart PNG";
+        button.innerHTML = "&#8681;";
+        button.addEventListener("click", () => {
+            Plotly.downloadImage(chartDiv, {
+                format: "png",
+                width: 1200,
+                height: 600,
+                filename
+            });
+        });
+
+        chartDiv.appendChild(button);
     };
 
     const savePreferences = () => {
@@ -268,6 +298,7 @@
                 colorscale: "Viridis",
                 hovertemplate: "From %{y}<br>To %{x}<br>%{z:.2f} min<extra></extra>"
             }], baseLayout(selected === "all" ? "Average Response Time (minutes)" : `Response Times for ${selected}`), plotConfig);
+            addDownloadButton("responseHeatmap", "kaajd-response-heatmap");
         } catch {
             setChartError("responseHeatmap", "Could not render response heatmap.");
         }
@@ -281,6 +312,7 @@
         }
         try {
             Plotly.newPlot("conversationStarters", [{ x, y, type: "bar", marker: { color: "#2e6f95" }, hovertemplate: "%{x}<br>%{y} conversations<extra></extra>" }], baseLayout("Conversations Started"), plotConfig);
+            addDownloadButton("conversationStarters", "kaajd-conversation-starters");
         } catch {
             setChartError("conversationStarters", "Could not render conversation starter chart.");
         }
@@ -304,6 +336,7 @@
                 { x, y: media, type: "bar", name: "Media", hovertemplate: "%{x}<br>Media: %{y}<extra></extra>" },
                 { x, y: links, type: "bar", name: "Links", hovertemplate: "%{x}<br>Links: %{y}<extra></extra>" }
             ], baseLayout("Media/Link Messages per Person", { barmode: "stack" }), plotConfig);
+            addDownloadButton("mediaPerPerson", "kaajd-media-links-per-person");
         } catch {
             setChartError("mediaPerPerson", "Could not render per-person media chart.");
         }
@@ -320,11 +353,13 @@
 
         try {
             Plotly.newPlot("mediaMonthly", traces, baseLayout("Monthly Media/Link Trends"), plotConfig);
+            addDownloadButton("mediaMonthly", "kaajd-media-monthly-trends");
         } catch {
             setChartError("mediaMonthly", "Could not render monthly media/link chart.");
         }
         try {
             Plotly.newPlot("topDomains", [{ x: p.top_domains_bar.x, y: p.top_domains_bar.y, type: "bar", marker: { color: "#1f8a70" }, hovertemplate: "%{x}<br>%{y} shares<extra></extra>" }], baseLayout("Top Shared Domains"), plotConfig);
+            addDownloadButton("topDomains", "kaajd-top-shared-domains");
         } catch {
             setChartError("topDomains", "Could not render top domains chart.");
         }
@@ -341,6 +376,7 @@
 
         try {
             Plotly.newPlot("topicsHeatmap", [{ x: terms, y: rows.map((row) => row.month), z, type: "heatmap", colorscale: "YlOrBr", hovertemplate: "%{y}<br>%{x}<br>%{z:.4f}<extra></extra>" }], baseLayout("Monthly Topic Term Intensities"), plotConfig);
+            addDownloadButton("topicsHeatmap", "kaajd-monthly-topic-heatmap");
         } catch {
             setChartError("topicsHeatmap", "Could not render topics heatmap.");
         }
@@ -349,6 +385,7 @@
         const values = p.topic_terms.terms.map((termsList) => termsList.slice(0, 5).join(", "));
         try {
             Plotly.newPlot("topicTerms", [{ x: labels, y: values.map((_, idx) => idx + 1), type: "bar", text: values, textposition: "auto", orientation: "v", hovertemplate: "%{x}<br>%{text}<extra></extra>" }], baseLayout("Topic Labels (Top Terms)", { yaxis: { visible: false } }), plotConfig);
+            addDownloadButton("topicTerms", "kaajd-topic-labels");
         } catch {
             setChartError("topicTerms", "Could not render topic labels chart.");
         }
@@ -361,11 +398,13 @@
         const correlation = filterSquareHeatmap(p.correlation_heatmap, selected);
         try {
             Plotly.newPlot("affinityHeatmap", [{ x: affinity.x, y: affinity.y, z: affinity.z, type: "heatmap", colorscale: "Blues", hovertemplate: "%{y} -> %{x}<br>Affinity %{z:.4f}<extra></extra>" }], baseLayout(selected === "all" ? "Affinity Scores" : `Affinity Around ${selected}`), plotConfig);
+            addDownloadButton("affinityHeatmap", "kaajd-affinity-heatmap");
         } catch {
             setChartError("affinityHeatmap", "Could not render affinity heatmap.");
         }
         try {
             Plotly.newPlot("correlationHeatmap", [{ x: correlation.x, y: correlation.y, z: correlation.z, type: "heatmap", colorscale: "RdBu", zmid: 0, hovertemplate: "%{y} vs %{x}<br>r=%{z:.3f}<extra></extra>" }], baseLayout(selected === "all" ? "Daily Activity Correlation" : `Correlation Around ${selected}`), plotConfig);
+            addDownloadButton("correlationHeatmap", "kaajd-correlation-heatmap");
         } catch {
             setChartError("correlationHeatmap", "Could not render activity correlation heatmap.");
         }
@@ -467,7 +506,7 @@
         try {
             dashboardData = JSON.parse(raw);
             populatePeople();
-            inferMonthBounds();
+            inferDateBounds();
             renderAll();
             setStatus("info", "Loaded dashboard data from local cache, refreshing in background...");
             return true;
