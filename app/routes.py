@@ -377,12 +377,6 @@ def chat_dashboard_data(chat_id: int):
         {
             "chat_id": chat_id,
             "context": context,
-            "analysis": {
-                "response_patterns": response_patterns,
-                "media_links": media_links,
-                "topics": topics,
-                "relationships": relationships,
-            },
             "applied_filters": {
                 "person": selected_person,
                 "start_date": start_date,

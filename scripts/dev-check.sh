@@ -93,7 +93,7 @@ if "topics" not in topics or "monthly_trends" not in topics or "meta" not in top
     raise SystemExit("Topics API check failed")
 if "affinity_scores" not in relationships or "activity_correlations" not in relationships:
     raise SystemExit("Relationships API check failed")
-if "analysis" not in dashboard or "plotly" not in dashboard:
+if "plotly" not in dashboard or "context" not in dashboard:
     raise SystemExit("Dashboard API check failed")
 if "response_patterns" not in dashboard["plotly"]:
     raise SystemExit("Dashboard plotly payload check failed")
