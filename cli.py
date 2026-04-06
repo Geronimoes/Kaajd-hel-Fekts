@@ -1,17 +1,10 @@
 import argparse
-import sys
 
 from app.analyzer import analyze_chat
-
-
-DEPRECATION_NOTE = (
-    "[deprecated] wa-stats-flask.py is kept for compatibility. "
-    "Use `python3 cli.py <chat.txt>` or the web app routes instead."
-)
+from app.graphs import generate_graphs
 
 
 def main() -> None:
-    print(DEPRECATION_NOTE, file=sys.stderr)
     parser = argparse.ArgumentParser(
         description="Analyze a WhatsApp chat export file (.txt)."
     )
@@ -19,11 +12,17 @@ def main() -> None:
         "file_path",
         nargs="?",
         default="./data/chat.txt",
-        help="Path to the chat export file",
+        help="Path to the WhatsApp chat export file",
+    )
+    parser.add_argument(
+        "--db-path",
+        default=None,
+        help="Optional SQLite database path (defaults to KAAJD_DB_PATH or ./kaajd.sqlite3)",
     )
     args = parser.parse_args()
 
-    analysis = analyze_chat(args.file_path)
+    analysis = analyze_chat(args.file_path, db_path=args.db_path)
+    generate_graphs(analysis["raw_data_df"], analysis["output_dir"])
     print(analysis["chat_stats_df"].to_string(index=False))
 
 

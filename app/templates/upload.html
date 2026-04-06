@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+
+{% block title %}Kaajd Upload{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <h1 class="mb-3">Kaajd chat analyzer</h1>
+        <p class="text-muted">Upload a WhatsApp export (.txt) to generate summary stats and graphs.</p>
+
+        {% if error %}
+        <div class="alert alert-danger" role="alert">{{ error }}</div>
+        {% endif %}
+
+        <form method="post" enctype="multipart/form-data" id="upload-form" class="card card-body shadow-sm">
+            <div class="mb-3">
+                <label for="file" class="form-label">Chat export file</label>
+                <input type="file" id="file" name="file" class="form-control" accept=".txt" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Analyze chat</button>
+            <div id="loading" class="small text-muted mt-3 d-none">Processing file and generating graphs...</div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.getElementById("upload-form").addEventListener("submit", function () {
+    document.getElementById("loading").classList.remove("d-none");
+});
+</script>
+{% endblock %}

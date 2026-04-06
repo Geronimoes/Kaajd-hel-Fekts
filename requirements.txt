@@ -1,0 +1,14 @@
+beautifulsoup4
+emoji
+flask
+flask-httpauth
+gunicorn
+langdetect
+matplotlib
+nltk
+pandas
+scikit-learn
+seaborn
+statsmodels
+textblob
+wordcloud

@@ -1,0 +1,26 @@
+[
+  {
+    "id": "proc_2026-04-05T2207_3a399e",
+    "workspaceId": "mnm8hiik",
+    "title": "kaajd-flask",
+    "command": ".venv/bin/python wa-flask.py",
+    "cwd": "/home/jeroen/projects/kaajd",
+    "status": "stopped",
+    "pid": 1036477,
+    "startedAt": "2026-04-05T22:07:34.082Z",
+    "outputSizeBytes": 0,
+    "stoppedAt": "2026-04-05T22:07:57.958Z"
+  },
+  {
+    "id": "proc_2026-04-05T2219_331b8c",
+    "workspaceId": "mnm8hiik",
+    "title": "kaajd-auth-test",
+    "command": "KAAJD_AUTH_ENABLED=true KAAJD_BASIC_AUTH_USERNAME=test KAAJD_BASIC_AUTH_PASSWORD=secret .venv/bin/python wa-flask.py",
+    "cwd": "/home/jeroen/projects/kaajd",
+    "status": "stopped",
+    "pid": 1045662,
+    "startedAt": "2026-04-05T22:19:57.625Z",
+    "outputSizeBytes": 0,
+    "stoppedAt": "2026-04-05T22:20:09.001Z"
+  }
+]

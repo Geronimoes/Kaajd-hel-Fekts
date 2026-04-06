@@ -1,0 +1,26 @@
+services:
+  kaajd:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: kaajd:latest
+    container_name: kaajd
+    ports:
+      - "${KAAJD_PORT:-5000}:5000"
+    environment:
+      KAAJD_DB_PATH: ${KAAJD_DB_PATH:-/data/kaajd.sqlite3}
+      KAAJD_AUTH_ENABLED: ${KAAJD_AUTH_ENABLED:-true}
+      KAAJD_BASIC_AUTH_USERNAME: ${KAAJD_BASIC_AUTH_USERNAME:-}
+      KAAJD_BASIC_AUTH_PASSWORD: ${KAAJD_BASIC_AUTH_PASSWORD:-}
+      KAAJD_MAX_UPLOAD_BYTES: ${KAAJD_MAX_UPLOAD_BYTES:-26214400}
+      GUNICORN_WORKERS: ${GUNICORN_WORKERS:-2}
+    volumes:
+      - ./app/static/uploads:/app/app/static/uploads
+      - ./data:/data
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:5000/', timeout=4)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+    restart: unless-stopped

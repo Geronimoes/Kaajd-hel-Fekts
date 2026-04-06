@@ -1,0 +1,490 @@
+{% extends "base.html" %}
+
+{% block title %}Kaajd Results{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+    <div>
+        <h1 class="h3 mb-0">Interactive analysis</h1>
+        <p class="text-muted mb-0">Overview and deep-dive analytics for this chat export.</p>
+    </div>
+    <a href="{{ url_for('main.upload_file') }}" class="btn btn-outline-secondary">Analyze another chat</a>
+</div>
+
+<div id="dashboardStatus" class="mb-3"></div>
+
+<section class="card shadow-sm mb-4">
+    <div class="card-body">
+        <div class="row g-3 align-items-end">
+            <div class="col-md-4">
+                <label for="personFilter" class="form-label">Person filter</label>
+                <select id="personFilter" class="form-select">
+                    <option value="all">All people</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label for="startDate" class="form-label">From date</label>
+                <input type="date" id="startDate" class="form-control">
+            </div>
+            <div class="col-md-3">
+                <label for="endDate" class="form-label">To date</label>
+                <input type="date" id="endDate" class="form-control">
+            </div>
+            <div class="col-md-2 d-grid">
+                <button id="applyFilters" class="btn btn-primary">Apply</button>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="mb-4">
+    <ul class="nav nav-tabs" id="dashboardTabs" role="tablist">
+        <li class="nav-item" role="presentation"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#tab-overview" type="button">Overview</button></li>
+        <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-activity" type="button">Activity</button></li>
+        <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-topics" type="button">Topics</button></li>
+        <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-relationships" type="button">Relationships</button></li>
+        <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-media" type="button">Media</button></li>
+        <li class="nav-item" role="presentation"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#tab-static" type="button">Static Graphs</button></li>
+    </ul>
+
+    <div class="tab-content card card-body shadow-sm border-top-0">
+        <div class="tab-pane fade show active" id="tab-overview" role="tabpanel">
+            <div id="statsCards" class="row g-3 mb-3"></div>
+            <div class="table-responsive">{{ table_html|safe }}</div>
+            <div class="mt-3 d-flex gap-2 flex-wrap">
+                <a href="{{ url_for('static', filename='uploads/' + analysis_id + '/output/raw-data.csv') }}" class="btn btn-primary">Download raw-data.csv</a>
+                <a href="{{ url_for('static', filename='uploads/' + analysis_id + '/output/summary.json') }}" class="btn btn-primary">Download summary.json</a>
+            </div>
+        </div>
+
+        <div class="tab-pane fade" id="tab-activity" role="tabpanel">
+            <div id="responseHeatmap" class="chart-box"></div>
+            <div id="conversationStarters" class="chart-box mt-3"></div>
+        </div>
+
+        <div class="tab-pane fade" id="tab-topics" role="tabpanel">
+            <div id="topicsHeatmap" class="chart-box"></div>
+            <div id="topicTerms" class="chart-box mt-3"></div>
+        </div>
+
+        <div class="tab-pane fade" id="tab-relationships" role="tabpanel">
+            <div id="affinityHeatmap" class="chart-box"></div>
+            <div id="correlationHeatmap" class="chart-box mt-3"></div>
+            <div id="twoPersonBalance" class="mt-3"></div>
+        </div>
+
+        <div class="tab-pane fade" id="tab-media" role="tabpanel">
+            <div id="mediaPerPerson" class="chart-box"></div>
+            <div id="mediaMonthly" class="chart-box mt-3"></div>
+            <div id="topDomains" class="chart-box mt-3"></div>
+        </div>
+
+        <div class="tab-pane fade" id="tab-static" role="tabpanel">
+            <div class="row g-3">
+                {% for image in graph_filenames %}
+                <div class="col-md-6">
+                    <a href="{{ url_for('static', filename='uploads/' + analysis_id + '/output/' + image) }}" data-lightbox="gallery" data-title="{{ image }}">
+                        <img src="{{ url_for('static', filename='uploads/' + analysis_id + '/output/' + image) }}" alt="{{ image }}" class="img-fluid rounded border graph-preview">
+                    </a>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</section>
+
+<div id="dashboardContext"
+     data-chat-id="{{ chat_id if chat_id is not none else '' }}"
+     data-analysis-id="{{ analysis_id }}"></div>
+{% endblock %}
+
+{% block scripts %}
+<script src="https://cdn.plot.ly/plotly-2.35.2.min.js"></script>
+<script>
+(() => {
+    const contextEl = document.getElementById("dashboardContext");
+    const chatId = contextEl.dataset.chatId;
+    if (!chatId) {
+        document.getElementById("statsCards").innerHTML = '<div class="col-12"><div class="alert alert-warning mb-0">No chat id was found for interactive API rendering. Static summary and graphs are still available.</div></div>';
+        return;
+    }
+
+    let dashboardData = null;
+    const cacheKey = `kaajd:dashboard:${chatId}`;
+    const prefsKey = `kaajd:dashboard:prefs:${chatId}`;
+
+    const personFilterEl = document.getElementById("personFilter");
+    const startDateEl = document.getElementById("startDate");
+    const endDateEl = document.getElementById("endDate");
+    const applyBtn = document.getElementById("applyFilters");
+    const statusEl = document.getElementById("dashboardStatus");
+
+    const chartIds = [
+        "responseHeatmap",
+        "conversationStarters",
+        "topicsHeatmap",
+        "topicTerms",
+        "affinityHeatmap",
+        "correlationHeatmap",
+        "mediaPerPerson",
+        "mediaMonthly",
+        "topDomains"
+    ];
+
+    const isMobile = () => window.matchMedia("(max-width: 768px)").matches;
+    const plotConfig = {
+        responsive: true,
+        displaylogo: false,
+        modeBarButtonsToRemove: ["select2d", "lasso2d", "autoScale2d"]
+    };
+    const baseLayout = (title, extra = {}) => ({
+        title,
+        margin: { t: 52, l: 46, r: 16, b: isMobile() ? 72 : 52 },
+        legend: {
+            orientation: isMobile() ? "h" : "v",
+            y: isMobile() ? -0.3 : 1,
+            x: isMobile() ? 0 : 1
+        },
+        hovermode: "closest",
+        ...extra
+    });
+
+    const setStatus = (kind, message) => {
+        if (!message) {
+            statusEl.innerHTML = "";
+            return;
+        }
+        statusEl.innerHTML = `<div class="alert alert-${kind} mb-0">${message}</div>`;
+    };
+
+    const setChartsLoading = () => {
+        chartIds.forEach((id) => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.innerHTML = '<div class="chart-loading">Loading chart data...</div>';
+            }
+        });
+    };
+
+    const setChartError = (id, message) => {
+        const el = document.getElementById(id);
+        if (el) {
+            el.innerHTML = `<div class="alert alert-danger m-2">${message}</div>`;
+        }
+    };
+
+    const savePreferences = () => {
+        const prefs = {
+            person: personFilterEl.value,
+            startDate: startDateEl.value,
+            endDate: endDateEl.value
+        };
+        localStorage.setItem(prefsKey, JSON.stringify(prefs));
+    };
+
+    const readStoredPreferences = () => {
+        const raw = localStorage.getItem(prefsKey);
+        if (!raw) {
+            return { person: "all", startDate: "", endDate: "" };
+        }
+        try {
+            return JSON.parse(raw);
+        } catch {
+            localStorage.removeItem(prefsKey);
+            return { person: "all", startDate: "", endDate: "" };
+        }
+    };
+
+    const applyStoredPreferences = () => {
+        const prefs = readStoredPreferences();
+        if (prefs.startDate) {
+            startDateEl.value = prefs.startDate;
+        }
+        if (prefs.endDate) {
+            endDateEl.value = prefs.endDate;
+        }
+        if (prefs.person && Array.from(personFilterEl.options).some((option) => option.value === prefs.person)) {
+            personFilterEl.value = prefs.person;
+        }
+    };
+
+    const currentFilters = () => ({
+        person: personFilterEl.value,
+        startDate: startDateEl.value,
+        endDate: endDateEl.value
+    });
+
+    const filterSquareHeatmap = (heatmap, selectedPerson) => {
+        if (!heatmap || selectedPerson === "all") {
+            return heatmap;
+        }
+        const idx = heatmap.x.indexOf(selectedPerson);
+        if (idx < 0) {
+            return { x: [], y: [], z: [] };
+        }
+        const row = heatmap.z[idx] || [];
+        const col = heatmap.z.map((r) => (r ? r[idx] : null));
+        return {
+            x: [selectedPerson, ...heatmap.x.filter((name) => name !== selectedPerson)],
+            y: ["outgoing", "incoming"],
+            z: [
+                [row[idx], ...row.filter((_, i) => i !== idx)],
+                [col[idx], ...col.filter((_, i) => i !== idx)]
+            ]
+        };
+    };
+
+    const renderCards = () => {
+        const totals = dashboardData.context.totals;
+        const chat = dashboardData.context.chat;
+        const cards = [
+            { label: "Messages", value: totals.total_messages },
+            { label: "Avg Length", value: totals.average_message_length },
+            { label: "Media Messages", value: chat.media_message_count },
+            { label: "Link Messages", value: chat.link_message_count },
+            { label: "Detected Language", value: chat.detected_language },
+            { label: "Parser Format", value: chat.parser_format }
+        ];
+        document.getElementById("statsCards").innerHTML = cards.map((c) => `
+            <div class="col-md-4 col-lg-2">
+                <div class="metric-card">
+                    <div class="metric-label">${c.label}</div>
+                    <div class="metric-value">${c.value}</div>
+                </div>
+            </div>
+        `).join("");
+    };
+
+    const renderResponse = () => {
+        const p = dashboardData.plotly.response_patterns;
+        const selected = currentFilters().person;
+        const heatmap = filterSquareHeatmap(p.response_time_heatmap, selected);
+        try {
+            Plotly.newPlot("responseHeatmap", [{
+                x: heatmap.x,
+                y: heatmap.y,
+                z: heatmap.z,
+                type: "heatmap",
+                colorscale: "Viridis",
+                hovertemplate: "From %{y}<br>To %{x}<br>%{z:.2f} min<extra></extra>"
+            }], baseLayout(selected === "all" ? "Average Response Time (minutes)" : `Response Times for ${selected}`), plotConfig);
+        } catch {
+            setChartError("responseHeatmap", "Could not render response heatmap.");
+        }
+
+        let x = p.conversation_starters_bar.x;
+        let y = p.conversation_starters_bar.y;
+        if (selected !== "all") {
+            const idx = x.indexOf(selected);
+            x = idx >= 0 ? [x[idx]] : [];
+            y = idx >= 0 ? [y[idx]] : [];
+        }
+        try {
+            Plotly.newPlot("conversationStarters", [{ x, y, type: "bar", marker: { color: "#2e6f95" }, hovertemplate: "%{x}<br>%{y} conversations<extra></extra>" }], baseLayout("Conversations Started"), plotConfig);
+        } catch {
+            setChartError("conversationStarters", "Could not render conversation starter chart.");
+        }
+    };
+
+    const renderMedia = () => {
+        const p = dashboardData.plotly.media_links;
+        let x = p.per_person_stacked.x;
+        let media = p.per_person_stacked.media;
+        let links = p.per_person_stacked.links;
+        const selected = currentFilters().person;
+        if (selected !== "all") {
+            const idx = x.indexOf(selected);
+            x = idx >= 0 ? [x[idx]] : [];
+            media = idx >= 0 ? [media[idx]] : [];
+            links = idx >= 0 ? [links[idx]] : [];
+        }
+
+        try {
+            Plotly.newPlot("mediaPerPerson", [
+                { x, y: media, type: "bar", name: "Media", hovertemplate: "%{x}<br>Media: %{y}<extra></extra>" },
+                { x, y: links, type: "bar", name: "Links", hovertemplate: "%{x}<br>Links: %{y}<extra></extra>" }
+            ], baseLayout("Media/Link Messages per Person", { barmode: "stack" }), plotConfig);
+        } catch {
+            setChartError("mediaPerPerson", "Could not render per-person media chart.");
+        }
+
+        const traces = p.monthly_traces
+            .filter((trace) => selected === "all" || trace.person === selected)
+            .map((trace) => ({
+                x: trace.x,
+                y: trace.y,
+                mode: "lines",
+                name: trace.name,
+                hovertemplate: "%{x}<br>%{y} messages<extra></extra>"
+            }));
+
+        try {
+            Plotly.newPlot("mediaMonthly", traces, baseLayout("Monthly Media/Link Trends"), plotConfig);
+        } catch {
+            setChartError("mediaMonthly", "Could not render monthly media/link chart.");
+        }
+        try {
+            Plotly.newPlot("topDomains", [{ x: p.top_domains_bar.x, y: p.top_domains_bar.y, type: "bar", marker: { color: "#1f8a70" }, hovertemplate: "%{x}<br>%{y} shares<extra></extra>" }], baseLayout("Top Shared Domains"), plotConfig);
+        } catch {
+            setChartError("topDomains", "Could not render top domains chart.");
+        }
+    };
+
+    const renderTopics = () => {
+        const p = dashboardData.plotly.topics;
+        const rows = p.monthly_trend_rows;
+        const terms = Array.from(new Set(rows.flatMap((r) => r.terms))).slice(0, 18);
+        const z = rows.map((row) => terms.map((term) => {
+            const idx = row.terms.indexOf(term);
+            return idx >= 0 ? row.scores[idx] : 0;
+        }));
+
+        try {
+            Plotly.newPlot("topicsHeatmap", [{ x: terms, y: rows.map((row) => row.month), z, type: "heatmap", colorscale: "YlOrBr", hovertemplate: "%{y}<br>%{x}<br>%{z:.4f}<extra></extra>" }], baseLayout("Monthly Topic Term Intensities"), plotConfig);
+        } catch {
+            setChartError("topicsHeatmap", "Could not render topics heatmap.");
+        }
+
+        const labels = p.topic_terms.labels;
+        const values = p.topic_terms.terms.map((termsList) => termsList.slice(0, 5).join(", "));
+        try {
+            Plotly.newPlot("topicTerms", [{ x: labels, y: values.map((_, idx) => idx + 1), type: "bar", text: values, textposition: "auto", orientation: "v", hovertemplate: "%{x}<br>%{text}<extra></extra>" }], baseLayout("Topic Labels (Top Terms)", { yaxis: { visible: false } }), plotConfig);
+        } catch {
+            setChartError("topicTerms", "Could not render topic labels chart.");
+        }
+    };
+
+    const renderRelationships = () => {
+        const p = dashboardData.plotly.relationships;
+        const selected = currentFilters().person;
+        const affinity = filterSquareHeatmap(p.affinity_heatmap, selected);
+        const correlation = filterSquareHeatmap(p.correlation_heatmap, selected);
+        try {
+            Plotly.newPlot("affinityHeatmap", [{ x: affinity.x, y: affinity.y, z: affinity.z, type: "heatmap", colorscale: "Blues", hovertemplate: "%{y} -> %{x}<br>Affinity %{z:.4f}<extra></extra>" }], baseLayout(selected === "all" ? "Affinity Scores" : `Affinity Around ${selected}`), plotConfig);
+        } catch {
+            setChartError("affinityHeatmap", "Could not render affinity heatmap.");
+        }
+        try {
+            Plotly.newPlot("correlationHeatmap", [{ x: correlation.x, y: correlation.y, z: correlation.z, type: "heatmap", colorscale: "RdBu", zmid: 0, hovertemplate: "%{y} vs %{x}<br>r=%{z:.3f}<extra></extra>" }], baseLayout(selected === "all" ? "Daily Activity Correlation" : `Correlation Around ${selected}`), plotConfig);
+        } catch {
+            setChartError("correlationHeatmap", "Could not render activity correlation heatmap.");
+        }
+
+        const balanceEl = document.getElementById("twoPersonBalance");
+        if (p.two_person_balance) {
+            balanceEl.innerHTML = `<div class="alert alert-info mb-0">Two-person balance: asymmetry ${p.two_person_balance.response_time_asymmetry_minutes} minutes.</div>`;
+        } else {
+            balanceEl.innerHTML = '<div class="alert alert-secondary mb-0">Two-person balance metrics are only available for 1:1 chats.</div>';
+        }
+    };
+
+    const populatePeople = () => {
+        while (personFilterEl.options.length > 1) {
+            personFilterEl.remove(1);
+        }
+        const people = dashboardData.context.top_people.map((person) => person.person);
+        people.forEach((person) => {
+            const option = document.createElement("option");
+            option.value = person;
+            option.textContent = person;
+            personFilterEl.appendChild(option);
+        });
+    };
+
+    const inferDateBounds = () => {
+        const bounds = dashboardData.context.date_bounds || {};
+        if (!startDateEl.value && bounds.start_date) {
+            startDateEl.value = bounds.start_date;
+        }
+        if (!endDateEl.value && bounds.end_date) {
+            endDateEl.value = bounds.end_date;
+        }
+    };
+
+    const renderAll = () => {
+        if (!dashboardData) {
+            return;
+        }
+        renderCards();
+        renderResponse();
+        renderMedia();
+        renderTopics();
+        renderRelationships();
+    };
+
+    const fetchDashboardData = ({ showLoading = true } = {}) => {
+        const filters = currentFilters();
+        const params = new URLSearchParams();
+        if (filters.person && filters.person !== "all") {
+            params.set("person", filters.person);
+        }
+        if (filters.startDate) {
+            params.set("start_date", filters.startDate);
+        }
+        if (filters.endDate) {
+            params.set("end_date", filters.endDate);
+        }
+
+        if (showLoading) {
+            setChartsLoading();
+            setStatus("secondary", "Loading interactive dashboard data...");
+        }
+
+        return fetch(`/api/chat/${chatId}/dashboard-data?${params.toString()}`)
+            .then((response) => {
+                if (!response.ok) {
+                    throw new Error("Request failed");
+                }
+                return response.json();
+            })
+            .then((payload) => {
+                dashboardData = payload;
+                sessionStorage.setItem(cacheKey, JSON.stringify(payload));
+                populatePeople();
+                inferDateBounds();
+                applyStoredPreferences();
+                renderAll();
+                setStatus("success", "Interactive dashboard loaded.");
+            })
+            .catch(() => {
+                if (!dashboardData) {
+                    document.getElementById("statsCards").innerHTML = '<div class="col-12"><div class="alert alert-danger mb-0">Failed to load interactive dashboard data.</div></div>';
+                }
+                setStatus("danger", "Could not refresh interactive data from API. Showing cached data when available.");
+            });
+    };
+
+    applyBtn.addEventListener("click", () => {
+        savePreferences();
+        fetchDashboardData({ showLoading: true });
+    });
+
+    const loadFromCache = () => {
+        const raw = sessionStorage.getItem(cacheKey);
+        if (!raw) {
+            return false;
+        }
+        try {
+            dashboardData = JSON.parse(raw);
+            populatePeople();
+            inferMonthBounds();
+            renderAll();
+            setStatus("info", "Loaded dashboard data from local cache, refreshing in background...");
+            return true;
+        } catch {
+            sessionStorage.removeItem(cacheKey);
+            return false;
+        }
+    };
+
+    setChartsLoading();
+    const hadCachedData = loadFromCache();
+    if (!hadCachedData) {
+        setStatus("secondary", "Loading interactive dashboard data...");
+    }
+
+    applyStoredPreferences();
+    fetchDashboardData({ showLoading: !hadCachedData });
+})();
+</script>
+{% endblock %}

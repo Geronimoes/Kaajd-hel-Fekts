@@ -1,0 +1,61 @@
+body {
+    background: linear-gradient(180deg, #f7f8fb 0%, #edf1f8 100%);
+}
+
+.metric-card {
+    background: linear-gradient(165deg, #ffffff 0%, #f2f6fb 100%);
+    border: 1px solid #d8e2ef;
+    border-radius: 0.85rem;
+    padding: 0.9rem;
+    height: 100%;
+}
+
+.metric-label {
+    color: #5c6f82;
+    font-size: 0.78rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    margin-bottom: 0.25rem;
+}
+
+.metric-value {
+    color: #1e2a36;
+    font-size: 1.1rem;
+    font-weight: 700;
+}
+
+.chart-box {
+    min-height: 340px;
+    border: 1px solid #dce5f0;
+    border-radius: 0.75rem;
+    background: #ffffff;
+    padding: 0.4rem;
+}
+
+.chart-loading {
+    height: 100%;
+    min-height: 300px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #64778c;
+    font-weight: 600;
+    background: linear-gradient(90deg, #f7f9fc 0%, #edf3fa 50%, #f7f9fc 100%);
+    border-radius: 0.5rem;
+}
+
+.graph-preview {
+    max-height: 420px;
+    object-fit: cover;
+    width: 100%;
+}
+
+table {
+    width: 100%;
+}
+
+@media (max-width: 768px) {
+    .chart-box {
+        min-height: 280px;
+    }
+}
