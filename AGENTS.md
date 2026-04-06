@@ -27,6 +27,10 @@ Web templates:
 - `app/templates/upload.html`
 - `app/templates/dashboard.html` (interactive tabbed dashboard)
 
+Upload flow notes:
+
+- `POST /` now supports both normal form posts and AJAX uploads (`X-Requested-With: XMLHttpRequest`) with JSON error/redirect responses for improved client-side error handling.
+
 Bundled demo data:
 
 - `data/sample-chat.txt` (used by `GET /demo` for one-click onboarding)

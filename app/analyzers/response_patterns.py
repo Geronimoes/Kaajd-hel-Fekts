@@ -11,6 +11,7 @@ def analyze_response_patterns(raw_data_df: pd.DataFrame) -> dict[str, Any]:
     if raw_data_df.empty:
         return {
             "response_pairs": [],
+            "response_delay_distribution": [],
             "reply_matrix": {},
             "conversation_starters": [],
             "conversation_summary": {
@@ -25,6 +26,7 @@ def analyze_response_patterns(raw_data_df: pd.DataFrame) -> dict[str, Any]:
     if df.empty:
         return {
             "response_pairs": [],
+            "response_delay_distribution": [],
             "reply_matrix": {},
             "conversation_starters": [],
             "conversation_summary": {
@@ -38,6 +40,7 @@ def analyze_response_patterns(raw_data_df: pd.DataFrame) -> dict[str, Any]:
     if df.empty:
         return {
             "response_pairs": [],
+            "response_delay_distribution": [],
             "reply_matrix": {},
             "conversation_starters": [],
             "conversation_summary": {
@@ -55,6 +58,7 @@ def analyze_response_patterns(raw_data_df: pd.DataFrame) -> dict[str, Any]:
     if df.empty:
         return {
             "response_pairs": [],
+            "response_delay_distribution": [],
             "reply_matrix": {},
             "conversation_starters": [],
             "conversation_summary": {
@@ -64,19 +68,22 @@ def analyze_response_patterns(raw_data_df: pd.DataFrame) -> dict[str, Any]:
         }
 
     df = df.sort_values("Datetime").reset_index(drop=True)
-    response_pairs = _compute_response_pairs(df)
+    response_pairs, response_delay_distribution = _compute_response_pairs(df)
     reply_matrix = _compute_reply_matrix(df)
     conversation_starters, conversation_summary = _compute_conversation_starters(df)
 
     return {
         "response_pairs": response_pairs,
+        "response_delay_distribution": response_delay_distribution,
         "reply_matrix": reply_matrix,
         "conversation_starters": conversation_starters,
         "conversation_summary": conversation_summary,
     }
 
 
-def _compute_response_pairs(df: pd.DataFrame) -> list[dict[str, Any]]:
+def _compute_response_pairs(
+    df: pd.DataFrame,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     pair_to_delays: dict[tuple[str, str], list[float]] = defaultdict(list)
 
     previous_person = None
@@ -94,6 +101,7 @@ def _compute_response_pairs(df: pd.DataFrame) -> list[dict[str, Any]]:
         previous_time = current_time
 
     output: list[dict[str, Any]] = []
+    distribution_output: list[dict[str, Any]] = []
     for (from_person, to_person), delays in sorted(pair_to_delays.items()):
         output.append(
             {
@@ -103,7 +111,18 @@ def _compute_response_pairs(df: pd.DataFrame) -> list[dict[str, Any]]:
                 "avg_response_minutes": round(mean(delays) / 60.0, 2),
             }
         )
-    return output
+
+        for delay_seconds in delays:
+            distribution_output.append(
+                {
+                    "from": from_person,
+                    "to": to_person,
+                    "person": to_person,
+                    "response_minutes": round(delay_seconds / 60.0, 2),
+                }
+            )
+
+    return output, distribution_output
 
 
 def _compute_reply_matrix(df: pd.DataFrame) -> dict[str, dict[str, int]]:

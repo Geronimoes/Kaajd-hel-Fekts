@@ -52,9 +52,7 @@ def upload_file():
     if request.method == "POST":
         uploaded_file = request.files.get("file")
         if not uploaded_file or not uploaded_file.filename:
-            return render_template(
-                "upload.html", error="Please select a .txt chat export file."
-            )
+            return _upload_error_response("Please select a .txt chat export file.")
 
         timestamp = datetime.datetime.now().strftime("%Y%m%d%H%M%S")
         filename = f"{timestamp}-{secure_filename(uploaded_file.filename)}"
@@ -62,21 +60,39 @@ def upload_file():
         upload_dir.mkdir(parents=True, exist_ok=True)
 
         file_path = upload_dir / filename
-        uploaded_file.save(file_path)
+        try:
+            uploaded_file.save(file_path)
 
-        analysis_result = analyze_chat(
-            file_path=str(file_path), db_path=current_app.config.get("DATABASE_PATH")
-        )
-        generate_graphs(analysis_result["raw_data_df"], analysis_result["output_dir"])
-
-        analysis_id = file_path.stem
-        return redirect(
-            url_for(
-                "main.dashboard",
-                analysis_id=analysis_id,
-                chat_id=analysis_result.get("chat_id"),
+            analysis_result = analyze_chat(
+                file_path=str(file_path),
+                db_path=current_app.config.get("DATABASE_PATH"),
             )
+            raw_data_df = analysis_result["raw_data_df"]
+            if raw_data_df.empty:
+                raise ValueError(
+                    "No WhatsApp messages were detected in this file. "
+                    "Please export the chat as a .txt file from WhatsApp (without media)."
+                )
+
+            generate_graphs(raw_data_df, analysis_result["output_dir"])
+        except Exception as exc:
+            if file_path.exists():
+                try:
+                    file_path.unlink()
+                except OSError:
+                    pass
+            return _upload_error_response(_friendly_upload_error(exc))
+
+        redirect_url = _build_dashboard_redirect_url(
+            analysis_id=file_path.stem,
+            chat_id=analysis_result.get("chat_id"),
+            parser_format=analysis_result.get("parser_format", "unknown"),
+            detected_language=analysis_result.get("detected_language", "unknown"),
+            message_count=int(len(raw_data_df)),
         )
+        if _is_ajax_request():
+            return jsonify({"redirect_url": redirect_url})
+        return redirect(redirect_url)
 
     error_message = request.args.get("error")
     return render_template("upload.html", error=error_message)
@@ -95,22 +111,27 @@ def demo_analysis():
             )
         )
 
-    analysis_result = analyze_chat(
-        file_path=str(sample_chat_path),
-        output_dir=str(demo_output_dir),
-        db_path=current_app.config.get("DATABASE_PATH"),
-    )
-    generate_graphs(analysis_result["raw_data_df"], analysis_result["output_dir"])
+    try:
+        analysis_result = analyze_chat(
+            file_path=str(sample_chat_path),
+            output_dir=str(demo_output_dir),
+            db_path=current_app.config.get("DATABASE_PATH"),
+        )
+        generate_graphs(analysis_result["raw_data_df"], analysis_result["output_dir"])
+    except Exception as exc:
+        return redirect(url_for("main.upload_file", error=_friendly_upload_error(exc)))
 
     analysis_id = _extract_analysis_id(Path(analysis_result["output_dir"]))
     if not analysis_id:
         analysis_id = sample_chat_path.stem
 
     return redirect(
-        url_for(
-            "main.dashboard",
+        _build_dashboard_redirect_url(
             analysis_id=analysis_id,
             chat_id=analysis_result.get("chat_id"),
+            parser_format=analysis_result.get("parser_format", "unknown"),
+            detected_language=analysis_result.get("detected_language", "unknown"),
+            message_count=int(len(analysis_result["raw_data_df"])),
         )
     )
 
@@ -139,12 +160,24 @@ def dashboard(analysis_id: str):
         image for image in GRAPH_FILENAMES if (output_dir / image).exists()
     ]
 
+    parse_feedback = None
+    parser_format = request.args.get("parser_format")
+    detected_language = request.args.get("detected_language")
+    message_count = request.args.get("message_count", type=int)
+    if parser_format or detected_language or message_count is not None:
+        parse_feedback = {
+            "parser_format": parser_format or "unknown",
+            "detected_language": detected_language or "unknown",
+            "message_count": message_count if message_count is not None else 0,
+        }
+
     return render_template(
         "dashboard.html",
         analysis_id=analysis_id,
         chat_id=chat_id,
         table_html=table_html,
         graph_filenames=available_graphs,
+        parse_feedback=parse_feedback,
     )
 
 
@@ -299,6 +332,7 @@ def chat_dashboard_data(chat_id: int):
     topics = analyze_topics(filtered_df)
     relationships = analyze_relationships(filtered_df)
     plotly_payloads = build_plotly_payloads(
+        raw_data_df=filtered_df,
         response_patterns=response_patterns,
         media_links=media_links,
         topics=topics,
@@ -371,6 +405,49 @@ def _parse_bool_query_param(value: str | None) -> bool | None:
     if normalized in {"0", "false", "no", "n"}:
         return False
     return None
+
+
+def _is_ajax_request() -> bool:
+    return request.headers.get("X-Requested-With") == "XMLHttpRequest"
+
+
+def _upload_error_response(message: str):
+    if _is_ajax_request():
+        return jsonify({"error": message}), 400
+    return render_template("upload.html", error=message), 400
+
+
+def _friendly_upload_error(exc: Exception) -> str:
+    detail = str(exc).strip().lower()
+    if "whatsapp messages were detected" in detail:
+        return str(exc)
+    if "utf-8" in detail or "codec" in detail or "decode" in detail:
+        return (
+            "Could not read this file as UTF-8 text. "
+            "Please export your chat from WhatsApp as a .txt file and try again."
+        )
+    return (
+        "No WhatsApp messages were detected in this file. "
+        "Make sure you export the chat as a .txt file from WhatsApp (without media)."
+    )
+
+
+def _build_dashboard_redirect_url(
+    *,
+    analysis_id: str,
+    chat_id: int | None,
+    parser_format: str,
+    detected_language: str,
+    message_count: int,
+) -> str:
+    return url_for(
+        "main.dashboard",
+        analysis_id=analysis_id,
+        chat_id=chat_id,
+        parser_format=parser_format,
+        detected_language=detected_language,
+        message_count=message_count,
+    )
 
 
 def _filter_raw_data_df(

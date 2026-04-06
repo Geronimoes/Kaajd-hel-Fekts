@@ -42,6 +42,9 @@ All notable changes to this project are documented in this file.
 - Added bundled synthetic demo dataset at `data/sample-chat.txt`.
 - Added authenticated demo analysis route `GET /demo` for one-click sample run.
 - Added per-chart interactive PNG export controls for Plotly charts on the dashboard.
+- Added day-of-week x hour activity heatmap payload under `plotly.activity` for dashboard API responses.
+- Added per-response delay distribution output in response analyzer payloads for distribution visualizations.
+- Added upload-page AJAX handling to detect success redirects vs. parser errors and show an inline retryable error state.
 
 ### Changed
 - Refactored web flow to call Python functions directly instead of using `subprocess.run()`.
@@ -93,6 +96,10 @@ All notable changes to this project are documented in this file.
 - Updated `app/templates/dashboard.html` to include explicit static-graph PNG download links.
 - Updated dashboard cache restoration flow to call `inferDateBounds()` (fixes stale method typo during cached loads).
 - Updated `app/static/css/app.css` with mobile tab overflow/touch-target improvements and chart download button styling.
+- Updated Activity dashboard tab to render a new interactive Day x Hour heatmap with PNG export support.
+- Updated Activity dashboard tab with a response-time distribution box plot (per person, capped to 24h) and PNG export support.
+- Updated upload and demo route handling to return friendlier parser/encoding error messages and include parser/language/message-count feedback on results redirects.
+- Updated `app/templates/dashboard.html` to show parse-format feedback alert after successful upload/demo analysis.
 
 ### Ops
 - Extracted project-root WhatsApp test archive into `data/chat.txt`.

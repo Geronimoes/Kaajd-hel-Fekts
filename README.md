@@ -106,6 +106,7 @@ Then open:
 - `http://localhost:5000`
 
 On the upload page you can also use **Try with demo data**, which analyzes the bundled `data/sample-chat.txt` file through `GET /demo` and redirects to results.
+Upload processing now reports friendly parser/encoding errors inline (with retry), and successful runs show parse-format/language/message-count feedback on the results page.
 
 ### Legacy script compatibility
 
@@ -196,6 +197,7 @@ GET /api/chat/<chat_id>/response-patterns
 Returns:
 
 - Average response times between sender pairs
+- Per-response delay distribution points (used for response-time box plots)
 - Reply transition matrix (`who replies to whom`)
 - Conversation starter breakdown with first-response metrics
 
@@ -247,7 +249,7 @@ GET /api/chat/<chat_id>/dashboard-data
 Returns:
 
 - Combined analysis payloads (response/media/topics/relationships)
-- Plotly-oriented data structures ready for interactive charts
+- Plotly-oriented data structures ready for interactive charts (including a day-of-week x hour activity heatmap)
 
 The `/results/<analysis_id>` page now uses this endpoint to render an interactive tabbed dashboard with person and date-range filters, while keeping a static-graph fallback tab.
 The dashboard now includes loading and error states, and caches the latest dashboard payload in browser session storage for faster reloads.

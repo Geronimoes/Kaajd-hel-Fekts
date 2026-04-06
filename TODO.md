@@ -44,3 +44,6 @@
 - [x] Add bundled demo chat flow (`data/sample-chat.txt` + `/demo`) with upload-page shortcut for quick onboarding.
 - [x] Add per-chart PNG downloads for interactive Plotly charts plus explicit PNG download links in the Static Graphs tab.
 - [x] Improve mobile dashboard tab UX with horizontal tab scrolling and 44px touch targets for tabs/filter apply button.
+- [x] Add Activity day-of-week x hour heatmap payload and interactive chart in the dashboard Activity tab.
+- [x] Add Activity response-time distribution chart (box plot, capped at 24h) using per-response delay tuples.
+- [x] Improve upload error handling with friendly parser-failure messages, AJAX redirect/error detection, and retry UI.

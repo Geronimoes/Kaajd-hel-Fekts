@@ -13,6 +13,12 @@
 
 <div id="dashboardStatus" class="mb-3"></div>
 
+{% if parse_feedback %}
+<div class="alert alert-success" role="alert">
+    Parsed as <strong>{{ parse_feedback.parser_format }}</strong>, detected language <strong>{{ parse_feedback.detected_language }}</strong>, and loaded <strong>{{ parse_feedback.message_count }}</strong> messages.
+</div>
+{% endif %}
+
 <section class="card shadow-sm mb-4">
     <div class="card-body">
         <div class="row g-3 align-items-end">
@@ -58,7 +64,9 @@
         </div>
 
         <div class="tab-pane fade" id="tab-activity" role="tabpanel">
-            <div id="responseHeatmap" class="chart-box"></div>
+            <div id="dayHourHeatmap" class="chart-box"></div>
+            <div id="responseHeatmap" class="chart-box mt-3"></div>
+            <div id="responseDistribution" class="chart-box mt-3"></div>
             <div id="conversationStarters" class="chart-box mt-3"></div>
         </div>
 
@@ -125,6 +133,8 @@
 
     const chartIds = [
         "responseHeatmap",
+        "dayHourHeatmap",
+        "responseDistribution",
         "conversationStarters",
         "topicsHeatmap",
         "topicTerms",
@@ -288,6 +298,25 @@
     const renderResponse = () => {
         const p = dashboardData.plotly.response_patterns;
         const selected = currentFilters().person;
+
+        try {
+            const activityHeatmap = dashboardData.plotly.activity.day_hour_heatmap;
+            Plotly.newPlot("dayHourHeatmap", [{
+                x: activityHeatmap.x,
+                y: activityHeatmap.y,
+                z: activityHeatmap.z,
+                type: "heatmap",
+                colorscale: "YlGnBu",
+                hovertemplate: "%{y} %{x}:00<br>%{z} messages<extra></extra>"
+            }], baseLayout("Day x Hour Activity Heatmap", {
+                xaxis: { title: "Hour of day" },
+                yaxis: { title: "Day of week" }
+            }), plotConfig);
+            addDownloadButton("dayHourHeatmap", "kaajd-day-hour-activity");
+        } catch {
+            setChartError("dayHourHeatmap", "Could not render day/hour activity heatmap.");
+        }
+
         const heatmap = filterSquareHeatmap(p.response_time_heatmap, selected);
         try {
             Plotly.newPlot("responseHeatmap", [{
@@ -301,6 +330,37 @@
             addDownloadButton("responseHeatmap", "kaajd-response-heatmap");
         } catch {
             setChartError("responseHeatmap", "Could not render response heatmap.");
+        }
+
+        try {
+            const traces = (p.response_time_distribution?.traces || [])
+                .filter((trace) => selected === "all" || trace.name === selected)
+                .map((trace) => ({
+                    type: "box",
+                    name: trace.name,
+                    y: trace.y,
+                    boxmean: "sd",
+                    boxpoints: "outliers",
+                    jitter: 0.3,
+                    pointpos: 0,
+                    hovertemplate: `${trace.name}<br>%{y:.2f} min<extra></extra>`
+                }));
+
+            Plotly.newPlot(
+                "responseDistribution",
+                traces,
+                baseLayout("Response Time Distribution (minutes)", {
+                    yaxis: {
+                        title: "Minutes",
+                        rangemode: "tozero",
+                        range: [0, p.response_time_distribution?.max_minutes_cap || 1440]
+                    }
+                }),
+                plotConfig
+            );
+            addDownloadButton("responseDistribution", "kaajd-response-time-distribution");
+        } catch {
+            setChartError("responseDistribution", "Could not render response-time distribution chart.");
         }
 
         let x = p.conversation_starters_bar.x;
