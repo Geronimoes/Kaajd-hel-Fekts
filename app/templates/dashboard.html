@@ -218,18 +218,24 @@
         doubleClick: false
     };
 
-    // Desktop uses 420px; mobile charts are sized by CSS (height: 360px on .chart-box).
-    // Do NOT set autosize: true alongside an explicit height — they fight each other.
-    const CHART_HEIGHT = mobile ? undefined : 420;
-    const HEATMAP_HEIGHT = mobile ? undefined : 420;
+    // Mobile: explicit width+height so the SVG has fixed dimensions.
+    // The container uses overflow-x: auto, so charts wider than the viewport
+    // are scrollable. staticPlot:true means no ResizeObserver fires — no growth loop.
+    // Desktop: height only (width adapts via responsive:true).
+    const MOBILE_W = 680;       // wider than any phone viewport → enables scroll
+    const MOBILE_HEATMAP_W = 820; // extra room for long left-margin labels
+    const CHART_HEIGHT = mobile ? 320 : 420;
+    const HEATMAP_HEIGHT = mobile ? 360 : 420;
+
     const baseLayout = (title, extra = {}) => ({
         title,
         dragmode: false,
-        ...(CHART_HEIGHT !== undefined ? { height: CHART_HEIGHT } : {}),
-        margin: { t: 52, l: 46, r: 16, b: mobile ? 80 : 52 },
+        height: CHART_HEIGHT,
+        ...(mobile ? { width: MOBILE_W } : {}),
+        margin: { t: 52, l: 46, r: 16, b: mobile ? 64 : 52 },
         legend: {
             orientation: mobile ? "h" : "v",
-            y: mobile ? -0.35 : 1,
+            y: mobile ? -0.25 : 1,
             x: mobile ? 0 : 1
         },
         hovermode: mobile ? false : "closest",
@@ -505,7 +511,7 @@
                 nacolor: "lightgray",
                 xgap: 1, ygap: 1,
                 hovertemplate: "From %{y}<br>To %{x}<br>%{z:.2f} min<extra></extra>"
-            }], { ...baseLayout(selected === "all" ? "Average Response Time (minutes)" : `Response Times for ${selected}`, { xaxis: { title: "Replied to (Sender)" }, yaxis: { title: "Replier (Responder)" } }), ...(HEATMAP_HEIGHT !== undefined ? { height: HEATMAP_HEIGHT } : {}), margin: { l: 200, t: 52, r: 16, b: mobile ? 80 : 52 } }, plotConfig);
+            }], { ...baseLayout(selected === "all" ? "Average Response Time (minutes)" : `Response Times for ${selected}`, { xaxis: { title: "Replied to (Sender)" }, yaxis: { title: "Replier (Responder)" } }), height: HEATMAP_HEIGHT, ...(mobile ? { width: MOBILE_HEATMAP_W } : {}), margin: { l: 200, t: 52, r: 16, b: mobile ? 64 : 52 } }, plotConfig);
             addDownloadButton("responseHeatmap", "kaajd-response-heatmap");
         } catch {
             setChartError("responseHeatmap", "Could not render response heatmap.");
@@ -646,13 +652,13 @@
         const affinity = filterSquareHeatmap(p.affinity_heatmap, selected);
         const correlation = filterSquareHeatmap(p.correlation_heatmap, selected);
         try {
-            Plotly.newPlot("affinityHeatmap", [{ x: affinity.x, y: affinity.y, z: affinity.z, type: "heatmap", colorscale: [[0, "white"], [1, "rgb(8,48,107)"]], hovertemplate: "%{y} → %{x}<br>Affinity %{z:.4f}<extra></extra>" }], { ...baseLayout(selected === "all" ? "Affinity Scores" : `Affinity Around ${selected}`, { xaxis: { title: "Replied to →" }, yaxis: { title: "Replier ↓" } }), ...(HEATMAP_HEIGHT !== undefined ? { height: HEATMAP_HEIGHT } : {}), margin: { l: 200, t: 52, r: 16, b: mobile ? 80 : 52 } }, plotConfig);
+            Plotly.newPlot("affinityHeatmap", [{ x: affinity.x, y: affinity.y, z: affinity.z, type: "heatmap", colorscale: [[0, "white"], [1, "rgb(8,48,107)"]], hovertemplate: "%{y} → %{x}<br>Affinity %{z:.4f}<extra></extra>" }], { ...baseLayout(selected === "all" ? "Affinity Scores" : `Affinity Around ${selected}`, { xaxis: { title: "Replied to →" }, yaxis: { title: "Replier ↓" } }), height: HEATMAP_HEIGHT, ...(mobile ? { width: MOBILE_HEATMAP_W } : {}), margin: { l: 200, t: 52, r: 16, b: mobile ? 64 : 52 } }, plotConfig);
             addDownloadButton("affinityHeatmap", "kaajd-affinity-heatmap");
         } catch {
             setChartError("affinityHeatmap", "Could not render affinity heatmap.");
         }
         try {
-            Plotly.newPlot("correlationHeatmap", [{ x: correlation.x, y: correlation.y, z: correlation.z, type: "heatmap", colorscale: "RdBu", zmid: 0, hovertemplate: "%{y} vs %{x}<br>r=%{z:.3f}<extra></extra>" }], { ...baseLayout(selected === "all" ? "Daily Activity Correlation" : `Correlation Around ${selected}`, { xaxis: { title: "Participant" }, yaxis: { title: "Participant" } }), ...(HEATMAP_HEIGHT !== undefined ? { height: HEATMAP_HEIGHT } : {}), margin: { l: 200, t: 52, r: 16, b: mobile ? 80 : 52 } }, plotConfig);
+            Plotly.newPlot("correlationHeatmap", [{ x: correlation.x, y: correlation.y, z: correlation.z, type: "heatmap", colorscale: "RdBu", zmid: 0, hovertemplate: "%{y} vs %{x}<br>r=%{z:.3f}<extra></extra>" }], { ...baseLayout(selected === "all" ? "Daily Activity Correlation" : `Correlation Around ${selected}`, { xaxis: { title: "Participant" }, yaxis: { title: "Participant" } }), height: HEATMAP_HEIGHT, ...(mobile ? { width: MOBILE_HEATMAP_W } : {}), margin: { l: 200, t: 52, r: 16, b: mobile ? 64 : 52 } }, plotConfig);
             addDownloadButton("correlationHeatmap", "kaajd-correlation-heatmap");
         } catch {
             setChartError("correlationHeatmap", "Could not render activity correlation heatmap.");

@@ -92,15 +92,18 @@ table {
         width: 100%;
     }
 
-    /* Fixed height (not min-height) so Plotly's ResizeObserver always
-       finds the same container size and never triggers a growth loop. */
+    /* On mobile charts have an explicit pixel width set in the Plotly layout
+       (wider than the viewport). overflow-x: auto lets the user scroll the
+       SVG horizontally; overflow-y: hidden prevents vertical growth. */
     .chart-box {
-        height: 360px;
-        overflow: hidden;
+        overflow-x: auto;
+        overflow-y: hidden;
+        min-height: 280px;
+        /* Scroll hint: thin scrollbar so users know it's scrollable */
+        scrollbar-width: thin;
     }
 
-    /* Download buttons are awkward on mobile; hide them.
-       Users can use the Static Graphs tab or long-press to save. */
+    /* Download buttons are awkward on mobile; hide them. */
     .chart-download-btn {
         display: none;
     }
